@@ -1,0 +1,57 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Logo SIPRAKAR</title>
+  <desc id="desc">Logo akademis dan manajemen program kerja dengan buku, topi wisuda, checklist, grafik, dan panah progres.</desc>
+  <defs>
+    <linearGradient id="bookGradient" x1="82" y1="362" x2="426" y2="438" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B3A75"/>
+      <stop offset="0.48" stop-color="#0A8D9B"/>
+      <stop offset="1" stop-color="#0E2D5C"/>
+    </linearGradient>
+    <linearGradient id="tealGradient" x1="144" y1="170" x2="382" y2="355" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17C9BC"/>
+      <stop offset="1" stop-color="#0B7E8C"/>
+    </linearGradient>
+    <linearGradient id="navyGradient" x1="112" y1="78" x2="399" y2="326" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#083D7A"/>
+      <stop offset="1" stop-color="#061F44"/>
+    </linearGradient>
+    <filter id="softShadow" x="52" y="54" width="408" height="408" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#031326" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <path d="M70 369C118 356 165 360 215 391C184 386 132 390 80 409C75 395 72 382 70 369Z" fill="#0B3A75"/>
+    <path d="M442 369C394 356 347 360 297 391C328 386 380 390 432 409C437 395 440 382 442 369Z" fill="#0B3A75"/>
+    <path d="M76 335C132 325 179 336 236 382C185 358 133 352 76 363V335Z" fill="url(#bookGradient)"/>
+    <path d="M436 335C380 325 333 336 276 382C327 358 379 352 436 363V335Z" fill="url(#bookGradient)"/>
+    <path d="M246 382C217 331 174 316 116 313V147C170 147 215 170 246 211V382Z" fill="#F8FBFF"/>
+    <path d="M266 382C295 331 338 316 396 313V147C342 147 297 170 266 211V382Z" fill="#F8FBFF"/>
+    <path d="M246 210V382C215 343 181 326 137 321C128 320 119 320 110 320V154C165 155 214 178 246 210Z" fill="#0F9F9D" opacity="0.18"/>
+    <path d="M266 210V382C297 343 331 326 375 321C384 320 393 320 402 320V154C347 155 298 178 266 210Z" fill="#0B3A75" opacity="0.12"/>
+
+    <path d="M102 118L256 58L410 118L256 178L102 118Z" fill="url(#navyGradient)"/>
+    <path d="M141 132C188 116 231 116 256 126C281 116 324 116 371 132V165C324 149 284 150 256 164C228 150 188 149 141 165V132Z" fill="#0C2B5C"/>
+    <path d="M115 127V213" stroke="#0C2B5C" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="115" cy="220" r="10" fill="#0C2B5C"/>
+    <path d="M115 230L102 271H128L115 230Z" fill="#0C2B5C"/>
+
+    <rect x="145" y="172" width="149" height="166" rx="22" fill="#FFFFFF"/>
+    <path d="M176 218L195 237L230 198" stroke="#0AA69F" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M176 263L195 282L230 244" stroke="#0AA69F" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M176 308L195 327L230 289" stroke="#0AA69F" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M242 215H285" stroke="#0B2B5B" stroke-width="11" stroke-linecap="round"/>
+    <path d="M242 261H281" stroke="#0B2B5B" stroke-width="11" stroke-linecap="round"/>
+    <path d="M242 307H268" stroke="#0B2B5B" stroke-width="11" stroke-linecap="round"/>
+
+    <path d="M315 312V265H351V312H315Z" fill="#0AA69F"/>
+    <path d="M360 312V228H396V312H360Z" fill="#12BDB1"/>
+    <path d="M405 312V188H441V312H405Z" fill="url(#tealGradient)"/>
+
+    <path d="M244 330L297 278L337 297L416 188" stroke="#0B2B5B" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M402 190H422V210" stroke="#0B2B5B" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="244" cy="330" r="14" fill="#FFFFFF" stroke="#0B2B5B" stroke-width="9"/>
+    <circle cx="297" cy="278" r="14" fill="#FFFFFF" stroke="#0B2B5B" stroke-width="9"/>
+    <circle cx="337" cy="297" r="14" fill="#FFFFFF" stroke="#0B2B5B" stroke-width="9"/>
+  </g>
+</svg>

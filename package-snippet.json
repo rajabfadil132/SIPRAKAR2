@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@inertiajs/react": "latest",
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "tailwindcss": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}
