@@ -12,10 +12,7 @@ class SiprakarSeeder extends Seeder
     {
         $permissions = config('siprakar_permissions.keys', []);
 
-        // Soft-delete cascade: hapus detail lokasi, lalu cabang (soft-delete).
-        Ruang::query()->delete();
-        Lantai::query()->delete();
-        Gedung::query()->delete();
+        // Seeder ini idempotent dan aman dijalankan ulang: tidak ada delete massal master data.
 
         $existingKode = ['VTR', 'PST', 'WTH', 'SRG'];
         foreach ($existingKode as $kode) {
@@ -159,15 +156,25 @@ class SiprakarSeeder extends Seeder
             ['nama_jenis' => 'No Pegawai', 'kode' => 'NOPEG', 'keterangan' => 'Nomor pegawai internal'],
             ['nama_jenis' => 'Kode Lembaga', 'kode' => 'LEMB', 'keterangan' => 'Kode unik lembaga/perguruan tinggi'],
             ['nama_jenis' => 'NIP', 'kode' => 'NIP', 'keterangan' => 'Nomor Induk Pegawai Negeri Sipil'],
-            ['nama_jenis' => 'NIDN', 'kode' => 'NIDN', 'keterangan' => 'Nomor Induk Dosen Nasional'],
+            ['nama_jenis' => 'NID', 'kode' => 'NID', 'keterangan' => 'Nomor Identitas Dosen/Pendidik internal'],
             ['nama_jenis' => 'NIM', 'kode' => 'NIM', 'keterangan' => 'Nomor Induk Mahasiswa'],
         ];
         foreach ($jenisIdentitasData as $ji) {
-            JenisIdentitas::updateOrCreate(
-                ['kode' => $ji['kode']],
-                ['nama_jenis' => $ji['nama_jenis'], 'keterangan' => $ji['keterangan'], 'status' => 'active']
-            );
+            $jenis = JenisIdentitas::withTrashed()->where('kode', $ji['kode'])->first();
+            if ($jenis) {
+                if ($jenis->trashed()) {
+                    $jenis->restore();
+                }
+                $jenis->update(['nama_jenis' => $ji['nama_jenis'], 'keterangan' => $ji['keterangan'], 'status' => 'active']);
+            } else {
+                JenisIdentitas::create(['nama_jenis' => $ji['nama_jenis'], 'kode' => $ji['kode'], 'keterangan' => $ji['keterangan'], 'status' => 'active']);
+            }
         }
+
+        $jenisByKode = JenisIdentitas::query()->pluck('id', 'kode');
+        $jenisNik = $jenisByKode['NIK'] ?? null;
+        $jenisNopeg = $jenisByKode['NOPEG'] ?? null;
+        $jenisLembaga = $jenisByKode['LEMB'] ?? null;
 
         // ===== KATEGORI PEKERJAAN =====
         $kategoris = [];
@@ -183,14 +190,25 @@ class SiprakarSeeder extends Seeder
             'Pengadaan' => ['keterangan' => 'Pengadaan barang dan peralatan baru.', 'role_categories' => [$saranaPrasarana]],
             'Renovasi' => ['keterangan' => 'Pekerjaan renovasi dan perbaikan besar.', 'role_categories' => [$teknisiPrasarana]],
             'Fasilitas' => ['keterangan' => 'Perawatan fasilitas umum dan taman.', 'role_categories' => [$kebersihan, $teknisiPrasarana]],
+            'Administrasi' => ['keterangan' => 'Pekerjaan administratif yang dapat ditangani oleh Admin Cabang tanpa subkategori khusus.', 'role_relations' => [['role_id' => $roles['admin']->id, 'role_category_id' => null]]],
         ];
 
         foreach ($kategoriDefinitions as $nama => $def) {
-            $kat = KategoriPekerjaan::updateOrCreate(
-                ['nama_kategori' => $nama],
-                ['keterangan' => $def['keterangan'], 'status' => 'active']
-            );
-            $kat->roleCategories()->sync(collect($def['role_categories'])->pluck('id')->all());
+            $kat = KategoriPekerjaan::withTrashed()->where('nama_kategori', $nama)->first();
+            if ($kat) {
+                if ($kat->trashed()) {
+                    $kat->restore();
+                }
+                $kat->update(['keterangan' => $def['keterangan'], 'status' => 'active']);
+            } else {
+                $kat = KategoriPekerjaan::create(['nama_kategori' => $nama, 'keterangan' => $def['keterangan'], 'status' => 'active']);
+            }
+
+            $relations = collect($def['role_categories'] ?? [])->map(fn (RoleCategory $roleCategory) => [
+                'role_id' => $roleCategory->role_id,
+                'role_category_id' => $roleCategory->id,
+            ])->merge($def['role_relations'] ?? [])->all();
+            $kat->syncRoleRelations($relations);
             $kategoris[$nama] = $kat;
         }
 
@@ -333,6 +351,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Superadmin SIPRAKAR',
                 'identity_number' => 'SA-001',
                 'identity_type' => 'No Pegawai',
+                'jenis_identitas_id' => $jenisNopeg,
                 'user_type' => 'Superadmin',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['superadmin']->id,
@@ -351,6 +370,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Budi Santoso',
                 'identity_number' => 'VTR-STF-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -369,6 +389,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Joko Pramono',
                 'identity_number' => 'VTR-SEC-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -387,6 +408,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Ahmad Dahlan',
                 'identity_number' => 'WTH-STF-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -405,6 +427,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Siti Aminah',
                 'identity_number' => 'WTH-KBR-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -423,6 +446,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Rudi Hermawan',
                 'identity_number' => 'SRG-STF-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -441,6 +465,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Dedi Kurniawan',
                 'identity_number' => 'SRG-SEC-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Staff',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['staff']->id,
@@ -458,7 +483,8 @@ class SiprakarSeeder extends Seeder
             [
                 'name' => 'Hendra Wijaya',
                 'identity_number' => 'WTH-LMB-001',
-                'identity_type' => 'NIK Karyawan',
+                'identity_type' => 'Kode Lembaga',
+                'jenis_identitas_id' => $jenisLembaga,
                 'user_type' => 'Lembaga',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['lembaga']->id,
@@ -476,7 +502,8 @@ class SiprakarSeeder extends Seeder
             [
                 'name' => 'Nurul Hidayah',
                 'identity_number' => 'SRG-LMB-001',
-                'identity_type' => 'NIK Karyawan',
+                'identity_type' => 'Kode Lembaga',
+                'jenis_identitas_id' => $jenisLembaga,
                 'user_type' => 'Lembaga',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['lembaga']->id,
@@ -495,6 +522,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Admin Witana Harja',
                 'identity_number' => 'WTH-ADM-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Admin',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['admin']->id,
@@ -513,6 +541,7 @@ class SiprakarSeeder extends Seeder
                 'name' => 'Admin Serang',
                 'identity_number' => 'SRG-ADM-001',
                 'identity_type' => 'NIK Karyawan',
+                'jenis_identitas_id' => $jenisNik,
                 'user_type' => 'Admin',
                 'password' => Hash::make('password'),
                 'role_id' => $roles['admin']->id,

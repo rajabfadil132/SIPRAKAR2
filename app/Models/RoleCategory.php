@@ -27,4 +27,9 @@ class RoleCategory extends Model
     {
         return $this->hasMany(User::class, 'role_category_id');
     }
+
+    public function kategoriRelations()
+    {
+        return $this->hasMany(KategoriPekerjaanRoleRelation::class);
+    }
 }

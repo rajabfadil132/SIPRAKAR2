@@ -20,7 +20,7 @@ const emptyByType = {
     gedungs: { cabang_id: "", nama_gedung: "", status: "active" },
     lantais: { gedung_id: "", nomor_lantai: "", nama_lantai: "", status: "active" },
     ruangs: { gedung_id: "", lantai_id: "", nama_ruang: "", kode_ruang: "", status: "active" },
-    kategoris: { nama_kategori: "", keterangan: "", status: "active", role_category_ids: [] },
+    kategoris: { nama_kategori: "", keterangan: "", status: "active", role_relations: [] },
     jenis_identitas: { nama_jenis: "", kode: "", keterangan: "", status: "active" },
 };
 
@@ -78,14 +78,54 @@ function relationOf(row, active) {
     return "-";
 }
 
+function kategoriRoleLabel(relation) {
+    const roleName = relation?.role?.nama_role ?? relation?.role_nama ?? "Role";
+    const categoryName = relation?.role_category?.name ?? relation?.roleCategory?.name ?? relation?.role_category_name;
+    return categoryName ? `${roleName} › ${categoryName}` : `${roleName} › Semua subkategori`;
+}
+
+function buildKategoriRelationOptions(roles = [], roleCategories = []) {
+    const roleOptions = roles.map((role) => ({
+        key: `role:${role.id}`,
+        role_id: role.id,
+        role_category_id: null,
+        label: `${role.nama_role} › Semua subkategori`,
+        description: role.keterangan ?? "Cocok untuk semua user dalam role ini",
+    }));
+
+    const categoryOptions = roleCategories.map((category) => ({
+        key: `category:${category.id}`,
+        role_id: category.role_id,
+        role_category_id: category.id,
+        label: category.full_label ?? `${category.role_nama ?? "Role"} › ${category.name}`,
+        description: "Cocok untuk subkategori role ini",
+    }));
+
+    return [...roleOptions, ...categoryOptions];
+}
+
 // QuickAddForm: stays open after saving for batch add
-function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roleCategories }) {
+function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roles, roleCategories }) {
     const buildInitial = () => {
         const base = emptyByType[type];
         if (!item) return base;
         const baseWithItem = { ...base, ...item };
-        if (type === 'kategoris' && item.roleCategories) {
-            baseWithItem.role_category_ids = item.roleCategories.map((rc) => String(rc.id));
+        if (type === 'kategoris') {
+            if (item.roleRelations) {
+                baseWithItem.role_relations = item.roleRelations.map((relation) => ({
+                    role_id: String(relation.role_id),
+                    role_category_id: relation.role_category_id ? String(relation.role_category_id) : '',
+                    role: relation.role,
+                    role_category: relation.role_category ?? relation.roleCategory,
+                }));
+            } else if (item.roleCategories) {
+                baseWithItem.role_relations = item.roleCategories.map((rc) => ({
+                    role_id: String(rc.role_id),
+                    role_category_id: String(rc.id),
+                    role: rc.role,
+                    role_category: rc,
+                }));
+            }
         }
         return baseWithItem;
     };
@@ -116,6 +156,8 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roleCate
         () => lantais.filter((lantai) => !selectedGedungId || String(lantai.gedung_id ?? lantai.gedung?.id ?? "") === String(selectedGedungId)),
         [lantais, selectedGedungId]
     );
+
+    const kategoriRelationOptions = useMemo(() => buildKategoriRelationOptions(roles, roleCategories), [roles, roleCategories]);
 
     const selectedCabangId = useMemo(() => {
         if (type === "gedungs") return form.data.cabang_id ? String(form.data.cabang_id) : "";
@@ -160,7 +202,7 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roleCate
                     } else if (type === "ruangs") {
                         form.setData({ ...emptyByType[type], gedung_id: selectedGedungId, lantai_id: "", status: form.data.status });
                     } else if (type === "kategoris") {
-                        form.setData({ ...emptyByType[type], status: form.data.status, role_category_ids: form.data.role_category_ids ?? [] });
+                        form.setData({ ...emptyByType[type], status: form.data.status, role_relations: form.data.role_relations ?? [] });
                     } else {
                         form.setData(emptyByType[type]);
                     }
@@ -274,27 +316,35 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roleCate
                             <div className="block text-sm md:col-span-2">
                                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Petugas yang Sesuai (Opsional)</label>
                                 <div className="mb-2 flex flex-wrap gap-1.5">
-                                    {roleCategories.filter((rc) => (form.data.role_category_ids ?? []).map(String).includes(String(rc.id))).map((rc) => (
-                                        <span key={rc.id} className="inline-flex items-center gap-1 rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">
-                                            {rc.full_label}
-                                            <button type="button" onClick={() => form.setData("role_category_ids", (form.data.role_category_ids ?? []).filter((id) => String(id) !== String(rc.id)))} className="ml-0.5 rounded-full hover:bg-[#6870fa]/30"><X size={10} /></button>
+                                    {(form.data.role_relations ?? []).map((relation, index) => (
+                                        <span key={`${relation.role_id}-${relation.role_category_id || 'all'}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">
+                                            {kategoriRoleLabel(relation)}
+                                            <button type="button" onClick={() => form.setData("role_relations", (form.data.role_relations ?? []).filter((_, i) => i !== index))} className="ml-0.5 rounded-full hover:bg-[#6870fa]/30"><X size={10} /></button>
                                         </span>
                                     ))}
                                 </div>
                                 <SmartSelect
                                     value=""
-                                    onChange={(val) => {
-                                        const current = (form.data.role_category_ids ?? []).map(String);
-                                        const valStr = String(val);
-                                        if (!current.includes(valStr)) form.setData("role_category_ids", [...current, valStr]);
+                                    onChange={(val, option) => {
+                                        if (!option) return;
+                                        const current = form.data.role_relations ?? [];
+                                        const exists = current.some((relation) => String(relation.role_id) === String(option.role_id) && String(relation.role_category_id || '') === String(option.role_category_id || ''));
+                                        if (!exists) {
+                                            form.setData("role_relations", [...current, {
+                                                role_id: String(option.role_id),
+                                                role_category_id: option.role_category_id ? String(option.role_category_id) : '',
+                                                role: roles.find((role) => String(role.id) === String(option.role_id)),
+                                                role_category: roleCategories.find((category) => String(category.id) === String(option.role_category_id)),
+                                            }]);
+                                        }
                                     }}
-                                    options={roleCategories.filter((rc) => !(form.data.role_category_ids ?? []).map(String).includes(String(rc.id)))}
-                                    placeholder="Cari dan pilih petugas yang sesuai..."
-                                    getOptionValue={(rc) => String(rc.id)}
-                                    getOptionLabel={(rc) => rc.full_label}
-                                    getOptionDescription={(rc) => rc.name !== rc.full_label.split(' › ')[1] ? rc.name : ""}
+                                    options={kategoriRelationOptions.filter((option) => !(form.data.role_relations ?? []).some((relation) => String(relation.role_id) === String(option.role_id) && String(relation.role_category_id || '') === String(option.role_category_id || '')))}
+                                    placeholder="Cari dan pilih role/subkategori yang sesuai..."
+                                    getOptionValue={(option) => option.key}
+                                    getOptionLabel={(option) => option.label}
+                                    getOptionDescription={(option) => option.description}
                                 />
-                                <p className="mt-1 text-xs text-slate-500">Pilih satu atau beberapa petugas/subkategori role yang cocok menangani kategori ini. Ini digunakan sebagai rekomendasi, bukan penugasan otomatis.</p>
+                                <p className="mt-1 text-xs text-slate-500">Pilih role utama atau subkategori role yang cocok menangani kategori ini. Ini digunakan sebagai rekomendasi, bukan penugasan otomatis.</p>
                             </div>
                         </>
                     )}
@@ -351,8 +401,8 @@ function DetailModal({ type, item, onClose }) {
                         <div className="md:col-span-2">
                             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Petugas yang Sesuai</p>
                             <div className="mt-1 flex flex-wrap gap-1.5">
-                                {(item.roleCategories ?? []).length > 0 ? item.roleCategories.map((rc) => (
-                                    <span key={rc.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">{rc.role?.nama_role} › {rc.name}</span>
+                                {(item.roleRelations ?? []).length > 0 ? item.roleRelations.map((relation) => (
+                                    <span key={relation.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">{kategoriRoleLabel(relation)}</span>
                                 )) : <span className="text-sm text-slate-500">Belum diatur</span>}
                             </div>
                         </div>
@@ -403,7 +453,7 @@ function TableFilters({ active, cabangs, gedungs, lantais, ruangs, filters, onFi
     ) : null;
 }
 
-export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs = [], kategoris = [], roleCategories = [], jenisIdentitas = [], permissions = {} }) {
+export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs = [], kategoris = [], roles = [], roleCategories = [], jenisIdentitas = [], permissions = {} }) {
     const [active, setActive] = useState("cabangs");
     const [editing, setEditing] = useState(null);
     const [detail, setDetail] = useState(null);
@@ -544,8 +594,8 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                                                 <td><div className="truncate" title={row.keterangan}>{row.keterangan || '-'}</div></td>
                                                 <td>
                                                     <div className="flex flex-wrap gap-1">
-                                                        {(row.roleCategories ?? []).length > 0 ? row.roleCategories.map((rc) => (
-                                                            <span key={rc.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2 py-0.5 text-xs font-semibold text-[#6870fa]">{rc.role?.nama_role} › {rc.name}</span>
+                                                        {(row.roleRelations ?? []).length > 0 ? row.roleRelations.map((relation) => (
+                                                            <span key={relation.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2 py-0.5 text-xs font-semibold text-[#6870fa]">{kategoriRoleLabel(relation)}</span>
                                                         )) : <span className="text-xs text-slate-500">Belum diatur</span>}
                                                     </div>
                                                 </td>
@@ -601,6 +651,7 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                     cabangs={cabangs}
                     gedungs={gedungs}
                     lantais={lantais}
+                    roles={roles ?? []}
                     roleCategories={roleCategories ?? []}
                     onClose={() => setEditing(null)}
                 />

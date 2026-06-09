@@ -18,7 +18,7 @@ class UserManagementController extends Controller
         $user = $request->user()->loadMissing('role');
         $isSuperadmin = $this->isSuperadmin($user);
 
-        $items = User::with(['role', 'roleCategory', 'cabang', 'creator:id,name', 'updater:id,name', 'deleter:id,name'])
+        $items = User::with(['role', 'roleCategory', 'cabang', 'jenisIdentitas', 'creator:id,name', 'updater:id,name', 'deleter:id,name'])
             ->when(! $isSuperadmin, fn ($query) => $query->where('cabang_id', $user->cabang_id))
             ->when($request->filled('search'), function ($query) use ($request) {
                 $s = $request->string('search');
@@ -27,6 +27,7 @@ class UserManagementController extends Controller
                         ->orWhere('email', 'like', "%$s%")
                         ->orWhere('identity_number', 'like', "%$s%")
                         ->orWhere('identity_type', 'like', "%$s%")
+                        ->orWhereHas('jenisIdentitas', fn ($jenis) => $jenis->where('nama_jenis', 'like', "%$s%")->orWhere('kode', 'like', "%$s%"))
                         ->orWhere('phone', 'like', "%$s%")
                         ->orWhereHas('role', fn ($role) => $role->where('nama_role', 'like', "%$s%"))
                         ->orWhereHas('roleCategory', fn ($category) => $category->where('name', 'like', "%$s%"))
@@ -85,7 +86,7 @@ class UserManagementController extends Controller
     {
         $this->ensureUserVisible($request->user(), $users_management);
         $users_management->load([
-            'role', 'roleCategory', 'cabang', 'creator:id,name', 'updater:id,name', 'deleter:id,name',
+            'role', 'roleCategory', 'cabang', 'jenisIdentitas', 'creator:id,name', 'updater:id,name', 'deleter:id,name',
             'pekerjaanDitugaskan' => fn ($q) => $q->withChecklistProgress(),
             'pekerjaanDitugaskan.kategori', 'pekerjaanDitugaskan.cabang',
         ]);
@@ -103,7 +104,7 @@ class UserManagementController extends Controller
         $this->assertCanManageTarget($actor, $users_management);
 
         return Inertia::render('Sistem/UserManagement/Form', [
-            'item' => $users_management->load(['role', 'roleCategory', 'cabang', 'creator:id,name', 'updater:id,name']),
+            'item' => $users_management->load(['role', 'roleCategory', 'cabang', 'jenisIdentitas', 'creator:id,name', 'updater:id,name']),
             'roles' => $this->availableRoles($actor)->with('activeCategories')->get(),
             'cabangs' => $this->availableCabangs($actor)->get(),
             'jenisIdentitas' => JenisIdentitas::active()->orderBy('nama_jenis')->get(['id', 'nama_jenis', 'kode', 'keterangan']),
@@ -155,7 +156,7 @@ class UserManagementController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'identity_type' => ['nullable', 'string', 'max:80'],
+            'jenis_identitas_id' => ['required', Rule::exists('jenis_identitas', 'id')->where('status', 'active')],
             'identity_number' => ['required', 'string', 'max:50', Rule::unique('users', 'identity_number')->ignore($id)],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($id)],
             'password' => [$isUpdate ? 'nullable' : 'required', 'string', 'min:8'],
@@ -183,7 +184,8 @@ class UserManagementController extends Controller
             $data['role_category_id'] = null;
         }
 
-        $data['identity_type'] = $request->input('identity_type');
+        $jenisIdentitas = JenisIdentitas::query()->active()->findOrFail($data['jenis_identitas_id']);
+        $data['identity_type'] = $jenisIdentitas->nama_jenis;
         $this->validateIdentityNumberForRole($data['identity_number'], $role);
         $data['user_type'] = $this->userTypeForRole($role);
 
@@ -256,14 +258,6 @@ class UserManagementController extends Controller
         }
     }
 
-    private function identityTypeForRole(Role $role): string
-    {
-        return match ($role->slug) {
-            'staff', 'admin' => 'NIK Karyawan',
-            'lembaga' => 'Kode Lembaga',
-            default => 'No Pegawai',
-        };
-    }
 
     private function validateIdentityNumberForRole(string $identityNumber, Role $role): void
     {

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\JenisIdentitas;
 use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\User;
@@ -30,6 +31,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'identity_number' => fake()->unique()->numerify('USR-####'),
             'identity_type' => 'No Pegawai',
+            'jenis_identitas_id' => $this->defaultJenisIdentitasId(),
             'user_type' => 'Superadmin',
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
@@ -51,6 +53,22 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    private function defaultJenisIdentitasId(): ?int
+    {
+        if (! class_exists(JenisIdentitas::class)) {
+            return null;
+        }
+
+        return JenisIdentitas::firstOrCreate(
+            ['kode' => 'NOPEG'],
+            [
+                'nama_jenis' => 'No Pegawai',
+                'keterangan' => 'Nomor pegawai internal untuk data test.',
+                'status' => 'active',
+            ]
+        )->id;
     }
 
     private function defaultRoleId(): ?int

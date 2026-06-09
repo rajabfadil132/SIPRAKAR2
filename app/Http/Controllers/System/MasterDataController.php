@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\System;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Cabang, Gedung, JenisIdentitas, KategoriPekerjaan, Lantai, RoleCategory, Ruang};
+use App\Models\{Cabang, Gedung, JenisIdentitas, KategoriPekerjaan, Lantai, Role, RoleCategory, Ruang};
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class MasterDataController extends Controller
@@ -17,7 +18,8 @@ class MasterDataController extends Controller
             'gedungs' => Gedung::query()->with(['cabang','creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
             'lantais' => Lantai::query()->with(['gedung.cabang','creator:id,name','updater:id,name','deleter:id,name'])->orderBy('gedung_id')->orderBy('nomor_lantai')->get(),
             'ruangs' => Ruang::query()->with(['lantaiMaster.gedung.cabang','creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
-            'kategoris' => KategoriPekerjaan::query()->with(['creator:id,name','updater:id,name','deleter:id,name','roleCategories.role'])->latest()->get(),
+            'kategoris' => KategoriPekerjaan::query()->with(['creator:id,name','updater:id,name','deleter:id,name','roleRelations.role:id,nama_role,slug','roleRelations.roleCategory:id,role_id,name,slug'])->latest()->get(),
+            'roles' => Role::query()->active()->orderBy('nama_role')->get(['id', 'nama_role', 'slug', 'keterangan']),
             'roleCategories' => RoleCategory::query()->with('role')->where('is_active', true)->orderBy('role_id')->orderBy('name')->get()->map(fn (RoleCategory $rc) => [
                 'id' => $rc->id,
                 'name' => $rc->name,
@@ -50,14 +52,14 @@ class MasterDataController extends Controller
         $data['created_by'] = $request->user()->id;
 
         if ($type === 'kategoris') {
-            $roleCategoryIds = array_map('intval', (array) ($data['role_category_ids'] ?? []));
-            unset($data['role_category_ids']);
+            $roleRelations = $this->normalizeKategoriRoleRelations($data);
+            unset($data['role_relations'], $data['role_category_ids']);
         }
 
         $item = $model::create($data);
 
-        if ($type === 'kategoris' && ! empty($roleCategoryIds)) {
-            $item->syncRoleCategories($roleCategoryIds);
+        if ($type === 'kategoris') {
+            $item->syncRoleRelations($roleRelations);
         }
 
         return back()->with('success', 'Master data berhasil ditambahkan.');
@@ -80,14 +82,14 @@ class MasterDataController extends Controller
         $data['updated_by'] = $request->user()->id;
 
         if ($type === 'kategoris') {
-            $roleCategoryIds = array_map('intval', (array) ($data['role_category_ids'] ?? []));
-            unset($data['role_category_ids']);
+            $roleRelations = $this->normalizeKategoriRoleRelations($data);
+            unset($data['role_relations'], $data['role_category_ids']);
         }
 
         $item->update($data);
 
         if ($type === 'kategoris') {
-            $item->syncRoleCategories($roleCategoryIds);
+            $item->syncRoleRelations($roleRelations);
         }
 
         return back()->with('success', 'Master data berhasil diperbarui.');
@@ -133,7 +135,10 @@ class MasterDataController extends Controller
                 'nama_kategori' => ['required', 'string', 'max:255'],
                 'keterangan' => ['nullable', 'string', 'max:1000'],
                 'status' => ['required', 'in:active,inactive'],
-                'role_category_ids' => ['nullable', 'array'],
+                'role_relations' => ['nullable', 'array'],
+                'role_relations.*.role_id' => ['required_with:role_relations', 'exists:roles,id'],
+                'role_relations.*.role_category_id' => ['nullable', 'exists:role_categories,id'],
+                'role_category_ids' => ['nullable', 'array'], // backward compatibility with older form payloads
                 'role_category_ids.*' => ['numeric'],
             ]],
             'jenis_identitas' => [JenisIdentitas::class, [
@@ -144,6 +149,47 @@ class MasterDataController extends Controller
             ]],
             default => abort(404, 'Jenis master data tidak tersedia.'),
         };
+    }
+
+
+    private function normalizeKategoriRoleRelations(array $data): array
+    {
+        $relations = collect($data['role_relations'] ?? [])
+            ->map(fn ($relation) => [
+                'role_id' => (int) ($relation['role_id'] ?? 0),
+                'role_category_id' => filled($relation['role_category_id'] ?? null) ? (int) $relation['role_category_id'] : null,
+            ])
+            ->filter(fn ($relation) => $relation['role_id'] > 0)
+            ->values();
+
+        if ($relations->isEmpty() && ! empty($data['role_category_ids'])) {
+            $relations = RoleCategory::query()
+                ->whereIn('id', collect($data['role_category_ids'])->filter()->values())
+                ->get()
+                ->map(fn (RoleCategory $category) => [
+                    'role_id' => (int) $category->role_id,
+                    'role_category_id' => (int) $category->id,
+                ])
+                ->values();
+        }
+
+        foreach ($relations as $index => $relation) {
+            if (! $relation['role_category_id']) {
+                continue;
+            }
+
+            $category = RoleCategory::query()->find($relation['role_category_id']);
+            if (! $category || (int) $category->role_id !== (int) $relation['role_id']) {
+                throw ValidationException::withMessages([
+                    'role_relations' => 'Subkategori role pada relasi kategori harus sesuai dengan role yang dipilih.',
+                ]);
+            }
+        }
+
+        return $relations
+            ->unique(fn ($relation) => $relation['role_id'].'|'.($relation['role_category_id'] ?? 'all'))
+            ->values()
+            ->all();
     }
 
     private function normalizeLantaiName(int|string $nomorLantai, ?string $namaLantai = null): string

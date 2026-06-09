@@ -338,7 +338,7 @@ class PekerjaanController extends Controller
                 })
                 ->with([
                     'cabang:id,nama_cabang,kode',
-                    'kategori:id,nama_kategori',
+                    'kategori:id,nama_kategori,keterangan',
                     'rab' => fn ($rab) => $rab->select('id', 'program_kerja_id', 'nomor_rab', 'status_rab', 'total_rab', 'status_rab_key')
                         ->with(['details' => fn ($d) => $d->select('id', 'rab_id', 'nama_item', 'jumlah_item', 'harga_satuan', 'subtotal', 'keterangan')]),
                 ])
@@ -348,7 +348,7 @@ class PekerjaanController extends Controller
             'gedungs' => Gedung::where('status', 'active')->with(['cabang:id,nama_cabang'])->orderBy('nama_gedung')->get(),
             'lantais' => Lantai::where('status', 'active')->with(['gedung.cabang:id,nama_cabang'])->orderBy('nomor_lantai')->get(),
             'ruangs' => Ruang::where('status', 'active')->with(['lantaiMaster.gedung.cabang'])->get(),
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->with('roleCategories:id,name')->get(['id', 'nama_kategori', 'keterangan']),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->with(['roleRelations.role:id,nama_role,slug','roleRelations.roleCategory:id,role_id,name,slug','roleCategories:id,role_id,name'])->get(['id', 'nama_kategori', 'keterangan']),
             'roles' => Role::active()->with('activeCategories')->orderBy('nama_role')->get(['id', 'nama_role', 'slug']),
             'users' => $this->assignableUsersFor(auth()->user()),
             'statuses' => $this->statuses,

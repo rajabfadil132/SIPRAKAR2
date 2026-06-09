@@ -19,6 +19,7 @@ class User extends Authenticatable
         'name',
         'identity_number',
         'identity_type',
+        'jenis_identitas_id',
         'user_type',
         'email',
         'password',
@@ -58,6 +59,11 @@ class User extends Authenticatable
     public function cabang()
     {
         return $this->belongsTo(Cabang::class);
+    }
+
+    public function jenisIdentitas()
+    {
+        return $this->belongsTo(JenisIdentitas::class, 'jenis_identitas_id');
     }
 
 

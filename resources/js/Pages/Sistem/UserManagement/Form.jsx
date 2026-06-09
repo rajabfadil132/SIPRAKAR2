@@ -8,7 +8,7 @@ export default function Form({ item, roles = [], cabangs = [], jenisIdentitas = 
   const isEdit = Boolean(item?.id);
   const form = useForm({
     name: item?.name ?? '',
-    identity_type: item?.identity_type ?? '',
+    jenis_identitas_id: item?.jenis_identitas_id ?? item?.jenis_identitas?.id ?? '',
     identity_number: item?.identity_number ?? '',
     email: item?.email ?? '',
     password: '',
@@ -21,7 +21,8 @@ export default function Form({ item, roles = [], cabangs = [], jenisIdentitas = 
 
   const selectedRole = useMemo(() => roles.find((role) => String(role.id) === String(form.data.role_id)) ?? null, [roles, form.data.role_id]);
   const categories = selectedRole?.active_categories ?? selectedRole?.activeCategories ?? [];
-  const identityLabel = form.data.identity_type || 'Nomor Identitas';
+  const selectedJenisIdentitas = useMemo(() => jenisIdentitas.find((jenis) => String(jenis.id) === String(form.data.jenis_identitas_id)) ?? null, [jenisIdentitas, form.data.jenis_identitas_id]);
+  const identityLabel = selectedJenisIdentitas?.nama_jenis || item?.identity_type || 'Nomor Identitas';
 
   const submit = (e) => {
     e.preventDefault();
@@ -53,7 +54,7 @@ export default function Form({ item, roles = [], cabangs = [], jenisIdentitas = 
             ) : (
               <div className="rounded-xl border border-[#29314b] bg-[#141b2d] p-4 text-sm text-slate-500"><b className="block text-[#e0e0e0]">Subkategori Role</b>Role ini tidak memiliki subkategori.</div>
             )}
-            <div><SmartSelect label="Jenis Identitas" value={form.data.identity_type} onChange={(value) => form.setData('identity_type', value)} options={jenisIdentitas} placeholder="Pilih jenis identitas" getOptionValue={(x) => x.nama_jenis} getOptionLabel={(x) => x.nama_jenis} getOptionDescription={(x) => x.kode ? `Kode: ${x.kode}` : (x.keterangan ?? '')} />{form.errors.identity_type && <p className="mt-1 text-xs text-red-300">{form.errors.identity_type}</p>}</div>
+            <div><SmartSelect label="Jenis Identitas" value={form.data.jenis_identitas_id} onChange={(value) => form.setData('jenis_identitas_id', value)} options={jenisIdentitas} placeholder="Pilih jenis identitas" required getOptionValue={(x) => x.id} getOptionLabel={(x) => x.nama_jenis} getOptionDescription={(x) => x.kode ? `Kode: ${x.kode}${x.keterangan ? ' — ' + x.keterangan : ''}` : (x.keterangan ?? '')} />{form.errors.jenis_identitas_id && <p className="mt-1 text-xs text-red-300">{form.errors.jenis_identitas_id}</p>}</div>
             <label>{identityLabel}<input className="input mt-1" value={form.data.identity_number} onChange={(e) => form.setData('identity_number', e.target.value)} placeholder={`Masukkan ${identityLabel}`} required />{form.errors.identity_number && <p className="mt-1 text-xs text-red-300">{form.errors.identity_number}</p>}</label>
             <label>Password<input className="input mt-1" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder={isEdit ? 'Kosongkan jika tidak diubah' : 'Minimal 8 karakter'} required={!isEdit} />{form.errors.password && <p className="mt-1 text-xs text-red-300">{form.errors.password}</p>}</label>
             <label>No. HP / Telepon<input className="input mt-1" value={form.data.phone} onChange={(e) => form.setData('phone', e.target.value)} />{form.errors.phone && <p className="mt-1 text-xs text-red-300">{form.errors.phone}</p>}</label>

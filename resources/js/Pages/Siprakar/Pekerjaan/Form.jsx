@@ -61,9 +61,20 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
     const selectedKategori = useMemo(() => kategoris.find((k) => String(k.id) === String(form.data.kategori_id)), [kategoris, form.data.kategori_id]);
 
     const filteredUsers = useMemo(() => {
-        if (!selectedKategori?.roleCategories?.length) return users;
+        const relations = selectedKategori?.roleRelations ?? [];
+        if (!relations.length && !selectedKategori?.roleCategories?.length) return users;
+
+        if (relations.length) {
+            return users.filter((user) => relations.some((relation) => {
+                if (relation.role_category_id) {
+                    return String(user.role_category_id ?? '') === String(relation.role_category_id);
+                }
+                return String(user.role_id ?? '') === String(relation.role_id);
+            }));
+        }
+
         const allowedIds = selectedKategori.roleCategories.map((rc) => rc.id);
-        return users.filter((user) => allowedIds.includes(user.role_category_id));
+        return users.filter((user) => allowedIds.map(String).includes(String(user.role_category_id)));
     }, [users, selectedKategori]);
 
     const rabInfo = useMemo(() => {
@@ -153,7 +164,7 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
                     </div>
                     <label className="md:col-span-2">Nama Pekerjaan<input className="input mt-1" value={form.data.nama_pekerjaan} onChange={(e) => form.setData("nama_pekerjaan", e.target.value)} required />{form.errors.nama_pekerjaan && <Error>{form.errors.nama_pekerjaan}</Error>}</label>
                     <SmartSelect label="Kategori" value={form.data.kategori_id} onChange={(value) => form.setData("kategori_id", value)} options={kategoris} placeholder="Pilih kategori" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.nama_kategori} getOptionDescription={(x) => x.keterangan || ""} />
-                    {selectedKategori?.roleCategories?.length ? <span className="mt-1 block text-xs text-slate-500">Petugas & penanggung jawab difilter sesuai role yang sesuai dengan kategori ini.</span> : null}
+                    {(selectedKategori?.roleRelations?.length || selectedKategori?.roleCategories?.length) ? <span className="mt-1 block text-xs text-slate-500">Petugas & penanggung jawab difilter sesuai role/subkategori yang sesuai dengan kategori ini.</span> : null}
                     <SmartSelect label="Prioritas" value={form.data.prioritas} onChange={(value) => form.setData("prioritas", value)} options={["Rendah", "Sedang", "Tinggi", "Mendesak"]} placeholder="Pilih prioritas" />
                     <SmartSelect label="Penanggung Jawab" value={form.data.penanggung_jawab_id} onChange={(value) => form.setData("penanggung_jawab_id", value)} options={filteredUsers} placeholder="Pilih penanggung jawab" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.name} getOptionDescription={(x) => [x.role?.nama_role, x.role_category?.name || x.roleCategory?.name, x.email].filter(Boolean).join(' · ') || 'User'} />
                     <label>Tanggal Mulai<input type="date" className="input mt-1" value={form.data.tanggal_mulai} onChange={(e) => form.setData("tanggal_mulai", e.target.value)} /></label>

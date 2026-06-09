@@ -62,7 +62,7 @@ export default function Index({ items, filters = {}, permissions = {}, canManage
                             <thead><tr><th className="w-52">User</th><th className="w-44">Identitas</th><th className="w-64 table-nowrap">Email</th><th className="w-40">Role</th><th className="w-36">Cabang</th><th className="w-24 text-center">Status</th><th className="w-28 text-right">Aksi</th></tr></thead>
                             <tbody>{rows.map((u) => <tr key={u.id}>
                                 <td className="whitespace-nowrap"><b>{u.name}</b><p className="text-xs text-slate-500">{u.phone ?? "-"}</p></td>
-                                <td className="whitespace-nowrap"><b className="text-sm text-[#4cceac]">{u.identity_type ?? "Identitas"}</b><p className="text-xs text-slate-500">{u.identity_number ?? "-"}</p></td>
+                                <td className="whitespace-nowrap"><b className="text-sm text-[#4cceac]">{u.jenis_identitas?.nama_jenis ?? u.identity_type ?? "Identitas"}</b><p className="text-xs text-slate-500">{u.identity_number ?? "-"}</p></td>
                                 <td className="table-nowrap">{u.email}</td>
                                 <td className="whitespace-nowrap"><b>{u.role?.nama_role ?? "-"}</b><p className="truncate text-xs text-slate-500">{u.role_category?.name ?? u.roleCategory?.name ?? "Tanpa subkategori"}</p></td>
                                 <td className="whitespace-nowrap">{u.cabang?.nama_cabang ?? "-"}</td>

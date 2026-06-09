@@ -153,7 +153,7 @@ class ProgramKerjaController extends Controller
     {
         return [
             'cabangs' => Cabang::where('status', 'active')->orderBy('nama_cabang')->get(),
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->with('roleCategories:id,name')->get(['id', 'nama_kategori', 'keterangan']),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->with(['roleRelations.role:id,nama_role,slug','roleRelations.roleCategory:id,role_id,name,slug','roleCategories:id,role_id,name'])->get(['id', 'nama_kategori', 'keterangan']),
         ];
     }
 

@@ -24,6 +24,11 @@ class JenisIdentitas extends Model
         'status' => 'string',
     ];
 
+    public function users()
+    {
+        return $this->hasMany(User::class, 'jenis_identitas_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
