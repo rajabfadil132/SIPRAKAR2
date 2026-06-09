@@ -4,27 +4,11 @@ import SmartSelect from '@/Components/SmartSelect';
 import { Link, useForm } from '@inertiajs/react';
 import { useMemo } from 'react';
 
-function roleKey(role) {
-  return String(role?.slug ?? '').toLowerCase();
-}
-
-function identityTypeForRole(role) {
-  switch (roleKey(role)) {
-    case 'staff':
-    case 'admin':
-      return 'NIK Karyawan';
-    case 'lembaga':
-      return 'Kode Lembaga';
-    default:
-      return 'No Pegawai';
-  }
-}
-
-export default function Form({ item, roles = [], cabangs = [] }) {
+export default function Form({ item, roles = [], cabangs = [], jenisIdentitas = [] }) {
   const isEdit = Boolean(item?.id);
   const form = useForm({
     name: item?.name ?? '',
-    identity_type: item?.identity_type ?? (item?.role ? identityTypeForRole(item.role) : ''),
+    identity_type: item?.identity_type ?? '',
     identity_number: item?.identity_number ?? '',
     email: item?.email ?? '',
     password: '',
@@ -37,8 +21,7 @@ export default function Form({ item, roles = [], cabangs = [] }) {
 
   const selectedRole = useMemo(() => roles.find((role) => String(role.id) === String(form.data.role_id)) ?? null, [roles, form.data.role_id]);
   const categories = selectedRole?.active_categories ?? selectedRole?.activeCategories ?? [];
-  const defaultIdentityType = selectedRole ? identityTypeForRole(selectedRole) : 'Nomor Identitas';
-  const identityLabel = form.data.identity_type || defaultIdentityType;
+  const identityLabel = form.data.identity_type || 'Nomor Identitas';
 
   const submit = (e) => {
     e.preventDefault();
@@ -46,12 +29,10 @@ export default function Form({ item, roles = [], cabangs = [] }) {
   };
 
   const chooseRole = (value, role) => {
-    const chosen = role ?? roles.find((candidate) => String(candidate.id) === String(value));
     form.setData({
       ...form.data,
       role_id: value,
       role_category_id: '',
-      identity_type: identityTypeForRole(chosen),
     });
   };
 
@@ -72,11 +53,7 @@ export default function Form({ item, roles = [], cabangs = [] }) {
             ) : (
               <div className="rounded-xl border border-[#29314b] bg-[#141b2d] p-4 text-sm text-slate-500"><b className="block text-[#e0e0e0]">Subkategori Role</b>Role ini tidak memiliki subkategori.</div>
             )}
-            <label>Jenis Identitas
-              <input className="input mt-1 bg-[#141b2d]/80 text-slate-400" value={defaultIdentityType} readOnly />
-              <span className="mt-1 block text-xs text-slate-500">Jenis identitas otomatis mengikuti role, misalnya staff/admin memakai NIK Karyawan dan lembaga memakai Kode Lembaga.</span>
-              {form.errors.identity_type && <p className="mt-1 text-xs text-red-300">{form.errors.identity_type}</p>}
-            </label>
+            <div><SmartSelect label="Jenis Identitas" value={form.data.identity_type} onChange={(value) => form.setData('identity_type', value)} options={jenisIdentitas} placeholder="Pilih jenis identitas" getOptionValue={(x) => x.nama_jenis} getOptionLabel={(x) => x.nama_jenis} getOptionDescription={(x) => x.kode ? `Kode: ${x.kode}` : (x.keterangan ?? '')} />{form.errors.identity_type && <p className="mt-1 text-xs text-red-300">{form.errors.identity_type}</p>}</div>
             <label>{identityLabel}<input className="input mt-1" value={form.data.identity_number} onChange={(e) => form.setData('identity_number', e.target.value)} placeholder={`Masukkan ${identityLabel}`} required />{form.errors.identity_number && <p className="mt-1 text-xs text-red-300">{form.errors.identity_number}</p>}</label>
             <label>Password<input className="input mt-1" type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} placeholder={isEdit ? 'Kosongkan jika tidak diubah' : 'Minimal 8 karakter'} required={!isEdit} />{form.errors.password && <p className="mt-1 text-xs text-red-300">{form.errors.password}</p>}</label>
             <label>No. HP / Telepon<input className="input mt-1" value={form.data.phone} onChange={(e) => form.setData('phone', e.target.value)} />{form.errors.phone && <p className="mt-1 text-xs text-red-300">{form.errors.phone}</p>}</label>

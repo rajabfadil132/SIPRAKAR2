@@ -9,12 +9,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/', fn () => redirect()->route('dashboard'))->name('home');
     Route::get('/siprakar', fn () => redirect()->route('dashboard'))->name('siprakar.home');
     Route::get('/pengaturan-sistem', fn () => redirect()->route('master-data.index'))->name('system.home');
-    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->middleware('permission:dashboard.view')->name('dashboard');
 });
 
 Route::middleware('auth')->group(function () {
-    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
-    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->middleware('permission:notifications.view')->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->middleware('permission:notifications.view')->name('notifications.read-all');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

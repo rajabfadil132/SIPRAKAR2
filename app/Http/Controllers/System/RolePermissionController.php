@@ -266,6 +266,6 @@ class RolePermissionController extends Controller
 
     private function ensureSuperadmin(Request $request): void
     {
-        // Role restriction dinonaktifkan pada versi solo SIPRAKAR.
+        abort_unless($request->user()?->roleKey() === 'superadmin', 403, 'Hanya superadmin yang boleh mengubah role dan permission.');
     }
 }

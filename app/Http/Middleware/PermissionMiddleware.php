@@ -10,9 +10,13 @@ class PermissionMiddleware
 {
     public function handle(Request $request, Closure $next, string $permission): Response
     {
-        if (! $request->user()) {
+        $user = $request->user();
+
+        if (! $user) {
             return redirect()->route('login')->with('error', 'Silakan login untuk melanjutkan.');
         }
+
+        abort_unless($user->hasPermission($permission), 403, 'Anda tidak memiliki hak akses untuk fitur ini.');
 
         return $next($request);
     }

@@ -11,7 +11,6 @@ import {
     CheckCircle2,
     ClipboardList,
     Clock3,
-    Eye,
     FileWarning,
     ListChecks,
     LoaderCircle,
@@ -94,14 +93,22 @@ export default function Dashboard({
                         </div>
                         <Link href="/rab" className="text-sm font-semibold text-[#4cceac]">Lihat semua</Link>
                     </div>
-                    <div className="table-shell">
-                        <table className="data-table min-w-[760px] table-fixed">
-                            <thead><tr><th className="w-36">Nomor</th><th>Program/Pekerjaan</th><th className="w-36">Cabang</th><th className="w-36 text-right">Nominal</th><th className="w-20">Aksi</th></tr></thead>
-                            <tbody>
-                                {rabWaiting.map((rab) => <tr key={rab.id}><td className="font-semibold text-[#4cceac]">{rab.nomor_rab}</td><td><div className="truncate font-semibold" title={rabName(rab)}>{rabCode(rab)} · {rabName(rab)}</div><p className="text-xs text-slate-500">Status: {rab.status_rab}</p></td><td>{rabCabang(rab)}</td><td className="table-currency font-semibold">{rupiah(rab.total_rab)}</td><td><Link href={`/rab/${rab.id}`} className="icon-btn" title="Review RAB"><Eye size={15} /></Link></td></tr>)}
-                                {rabWaiting.length === 0 && <tr><td colSpan="5" className="text-center text-slate-500">Tidak ada RAB menunggu review.</td></tr>}
-                            </tbody>
-                        </table>
+                    <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
+                        {rabWaiting.map((rab) => (
+                            <Link key={rab.id} href={`/rab/${rab.id}`} className="block rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <b className="line-clamp-2 text-sm">{rabName(rab)}</b>
+                                        <p className="mt-1 text-xs text-slate-500">{rabCode(rab)} &middot; Status: {rab.status_rab}</p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <b className="block text-sm font-black text-[#4cceac]">{rupiah(rab.total_rab)}</b>
+                                        <p className="mt-0.5 text-xs text-slate-500">{rabCabang(rab)}</p>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                        {rabWaiting.length === 0 && <p className="text-sm text-slate-500">Tidak ada RAB menunggu review.</p>}
                     </div>
                 </div>
 
@@ -115,13 +122,13 @@ export default function Dashboard({
                     </div>
                     <div className="max-h-[390px] space-y-3 overflow-y-auto pr-1">
                         {deadlineItems.map((item) => (
-                            <Link key={item.id} href={`/pekerjaan/${item.id}`} className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-[#4cceac] dark:border-[#29314b] dark:bg-[#141b2d]">
+                            <Link key={item.id} href={`/pekerjaan/${item.id}`} className="block rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="min-w-0"><b className="line-clamp-2 text-sm">{item.nama_pekerjaan}</b><p className="mt-1 text-xs text-slate-500">{item.kode_pekerjaan} · {item.cabang?.nama_cabang ?? "-"}</p></div>
                                     <span className={`rounded-full px-2 py-1 text-xs font-black ${isLate(item.target_selesai) ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400"}`}>{isLate(item.target_selesai) ? "Lewat" : "Dekat"}</span>
                                 </div>
                                 <p className="mt-2 text-xs text-slate-500">Target: {formatDate(item.target_selesai)} · Petugas: {item.petugas?.name ?? "Belum ada"}</p>
-                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
+                                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
                             </Link>
                         ))}
                         {deadlineItems.length === 0 && <p className="text-sm text-slate-500">Tidak ada pekerjaan yang mendekati atau melewati deadline.</p>}
@@ -129,7 +136,7 @@ export default function Dashboard({
                 </div>
             </section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <section className="mt-6 grid gap-6 xl:grid-cols-2">
                 <div className="page-card min-w-0">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
@@ -138,17 +145,23 @@ export default function Dashboard({
                         </div>
                         <Link href="/pekerjaan" className="shrink-0 text-xs font-bold text-[#4cceac]">Lihat semua</Link>
                     </div>
-                    <div className="table-shell">
-                        <table className="data-table min-w-[820px] table-fixed">
-                            <thead><tr><th className="w-36">Kode</th><th>Pekerjaan</th><th className="w-40">Cabang</th><th className="w-44">Masalah</th><th className="w-32 text-center">Status</th><th className="w-20">Aksi</th></tr></thead>
-                            <tbody>
-                                {incompleteItems.map((p) => {
-                                    const issues = [!p.petugas_id && "Tanpa petugas", Number(p.checklists_count ?? 0) === 0 && "Tanpa checklist"].filter(Boolean).join(" · ");
-                                    return <tr key={p.id}><td className="font-semibold text-[#4cceac]">{p.kode_pekerjaan}</td><td><div className="truncate" title={p.nama_pekerjaan}>{p.nama_pekerjaan}</div><p className="text-xs text-slate-500">{p.kategori?.nama_kategori ?? "-"}</p></td><td>{p.cabang?.nama_cabang ?? "-"}</td><td>{issues || "Perlu dicek"}</td><td className="text-center"><StatusBadge value={p.status} /></td><td><Link href={`/pekerjaan/${p.id}`} className="icon-btn" title="Lengkapi"><Eye size={15} /></Link></td></tr>;
-                                })}
-                                {incompleteItems.length === 0 && <tr><td colSpan="6" className="text-center text-slate-500">Tidak ada pekerjaan tanpa petugas/checklist.</td></tr>}
-                            </tbody>
-                        </table>
+                    <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
+                        {incompleteItems.map((p) => {
+                            const issues = [!p.petugas_id && "Tanpa petugas", Number(p.checklists_count ?? 0) === 0 && "Tanpa checklist"].filter(Boolean).join(" · ");
+                            return (
+                                <Link key={p.id} href={`/pekerjaan/${p.id}`} className="block rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div className="min-w-0 flex-1">
+                                            <b className="line-clamp-2 text-sm">{p.nama_pekerjaan}</b>
+                                            <p className="mt-1 text-xs text-slate-500">{p.kode_pekerjaan} &middot; {p.cabang?.nama_cabang ?? "-"} &middot; {p.kategori?.nama_kategori ?? "-"}</p>
+                                        </div>
+                                        <StatusBadge value={p.status} />
+                                    </div>
+                                    <p className="mt-2 text-xs font-semibold text-amber-400">{issues || "Perlu dicek"}</p>
+                                </Link>
+                            );
+                        })}
+                        {incompleteItems.length === 0 && <p className="text-sm text-slate-500">Tidak ada pekerjaan tanpa petugas/checklist.</p>}
                     </div>
                 </div>
 
@@ -160,15 +173,15 @@ export default function Dashboard({
                         </div>
                         <Link href="/tugas-saya" className="shrink-0 text-xs font-bold text-[#4cceac]">Lihat semua</Link>
                     </div>
-                    <div className="max-h-[390px] space-y-3 overflow-y-auto pr-1">
+                    <div className="max-h-[400px] space-y-3 overflow-y-auto pr-1">
                         {myTasks.map((item) => (
-                            <Link href={`/pekerjaan/${item.id}`} key={item.id} className="block min-w-0 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-[#4cceac] dark:border-[#29314b] dark:bg-[#141b2d]">
+                            <Link key={item.id} href={`/pekerjaan/${item.id}`} className="block min-w-0 rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
                                 <div className="flex min-w-0 items-start justify-between gap-3">
-                                    <b className="line-clamp-2 min-w-0 text-sm leading-snug">{item.nama_pekerjaan}</b>
-                                    <span className="shrink-0 text-xs font-bold text-[#4cceac]">{item.progress}%</span>
+                                    <b className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">{item.nama_pekerjaan}</b>
+                                    <span className="shrink-0 rounded-full bg-[#4cceac]/15 px-2.5 py-0.5 text-xs font-black text-[#4cceac]">{item.progress}%</span>
                                 </div>
-                                <p className="mt-1 min-w-0 break-words text-xs text-slate-500">Target: {formatDate(item.target_selesai)} · {item.cabang?.nama_cabang ?? "-"}</p>
-                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
+                                <p className="mt-1 text-xs text-slate-500">Target: {formatDate(item.target_selesai)} · {item.cabang?.nama_cabang ?? "-"}</p>
+                                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
                             </Link>
                         ))}
                         {myTasks.length === 0 && <p className="text-sm text-slate-500">Belum ada tugas aktif untuk akun ini.</p>}
@@ -176,7 +189,7 @@ export default function Dashboard({
                 </div>
             </section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <section className="mt-6 grid gap-6 xl:grid-cols-2">
                 <div className="page-card min-w-0">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <div>
@@ -187,13 +200,13 @@ export default function Dashboard({
                     </div>
                     <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
                         {runningItems.map((item) => (
-                            <Link href={`/pekerjaan/${item.id}`} key={item.id} className="block min-w-0 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-[#4cceac] dark:border-[#29314b] dark:bg-[#141b2d]">
+                            <Link key={item.id} href={`/pekerjaan/${item.id}`} className="block min-w-0 rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
                                 <div className="flex min-w-0 items-start justify-between gap-3">
-                                    <b className="line-clamp-2 min-w-0 text-sm leading-snug">{item.nama_pekerjaan}</b>
-                                    <span className="shrink-0 text-xs font-bold text-[#4cceac]">{item.progress}%</span>
+                                    <b className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">{item.nama_pekerjaan}</b>
+                                    <span className="shrink-0 rounded-full bg-[#4cceac]/15 px-2.5 py-0.5 text-xs font-black text-[#4cceac]">{item.progress}%</span>
                                 </div>
-                                <p className="mt-1 min-w-0 break-words text-xs text-slate-500">Target: {formatDate(item.target_selesai)} · {item.petugas?.name ?? "Belum ada petugas"}</p>
-                                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
+                                <p className="mt-1 text-xs text-slate-500">Target: {formatDate(item.target_selesai)} · {item.petugas?.name ?? "Belum ada petugas"}</p>
+                                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${item.progress}%` }} /></div>
                             </Link>
                         ))}
                         {runningItems.length === 0 && <p className="text-sm text-slate-500">Tidak ada pekerjaan yang berjalan.</p>}
@@ -201,8 +214,31 @@ export default function Dashboard({
                 </div>
 
                 <div className="page-card min-w-0">
-                    <div className="mb-4 flex items-center justify-between"><h2 className="font-bold">Pekerjaan Terbaru</h2><Link href="/pekerjaan" className="text-sm font-semibold text-[#4cceac]">Lihat semua</Link></div>
-                    <div className="table-shell"><table className="data-table min-w-[900px] table-fixed"><thead><tr><th className="w-36">Kode</th><th>Pekerjaan</th><th className="w-40">Cabang</th><th className="w-36">Kategori</th><th className="w-36">Progres</th><th className="w-32 text-center">Status</th><th className="w-20">Aksi</th></tr></thead><tbody>{recentPekerjaan.map((p) => <tr key={p.id}><td className="table-nowrap font-medium text-[#4cceac]">{p.kode_pekerjaan}</td><td><div className="truncate" title={p.nama_pekerjaan}>{p.nama_pekerjaan}</div></td><td>{p.cabang?.nama_cabang ?? "-"}</td><td>{p.kategori?.nama_kategori ?? "-"}</td><td><div className="progress-cell"><div className="progress-bar"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${p.progress}%` }} /></div><span className="progress-value">{p.progress}%</span></div></td><td className="text-center"><StatusBadge value={p.status_label ?? p.status} /></td><td><Link href={`/pekerjaan/${p.id}`} className="icon-btn" title="Lihat detail"><Eye size={15} /></Link></td></tr>)}{recentPekerjaan.length === 0 && <tr><td colSpan="7" className="text-center text-slate-500">Belum ada pekerjaan.</td></tr>}</tbody></table></div>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="font-bold">Pekerjaan Terbaru</h2>
+                            <p className="text-sm text-slate-500">Daftar pekerjaan terbaru di sistem.</p>
+                        </div>
+                        <Link href="/pekerjaan" className="shrink-0 text-xs font-bold text-[#4cceac]">Lihat semua</Link>
+                    </div>
+                    <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                        {recentPekerjaan.map((p) => (
+                            <Link key={p.id} href={`/pekerjaan/${p.id}`} className="block min-w-0 rounded-2xl border border-[#29314b] bg-[#141b2d] p-4 transition hover:border-[#4cceac]">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <b className="line-clamp-2 text-sm">{p.nama_pekerjaan}</b>
+                                        <p className="mt-1 text-xs text-slate-500">{p.kode_pekerjaan} · {p.cabang?.nama_cabang ?? "-"} · {p.kategori?.nama_kategori ?? "-"}</p>
+                                    </div>
+                                    <StatusBadge value={p.status_label ?? p.status} />
+                                </div>
+                                <div className="mt-3 flex items-center gap-3">
+                                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#29314b]"><div className="h-2 rounded-full bg-[#4cceac]" style={{ width: `${p.progress}%` }} /></div>
+                                    <span className="shrink-0 text-xs font-bold text-[#4cceac]">{p.progress}%</span>
+                                </div>
+                            </Link>
+                        ))}
+                        {recentPekerjaan.length === 0 && <p className="text-sm text-slate-500">Belum ada pekerjaan.</p>}
+                    </div>
                 </div>
             </section>
         </AppLayout>

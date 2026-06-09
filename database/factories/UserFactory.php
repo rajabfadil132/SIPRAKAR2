@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
+use App\Models\RolePermission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -26,9 +28,17 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'identity_number' => fake()->unique()->numerify('USR-####'),
+            'identity_type' => 'No Pegawai',
+            'user_type' => 'Superadmin',
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role_id' => $this->defaultRoleId(),
+            'role_category_id' => null,
+            'cabang_id' => null,
+            'phone' => fake()->numerify('08##########'),
+            'status' => 'active',
             'remember_token' => Str::random(10),
         ];
     }
@@ -41,5 +51,29 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    private function defaultRoleId(): ?int
+    {
+        if (! class_exists(Role::class)) {
+            return null;
+        }
+
+        $role = Role::firstOrCreate(
+            ['slug' => 'superadmin'],
+            [
+                'nama_role' => 'Superadmin',
+                'keterangan' => 'Akun test dengan akses penuh.',
+                'is_system' => true,
+                'is_active' => true,
+            ]
+        );
+
+        RolePermission::firstOrCreate(
+            ['role_id' => $role->id],
+            ['permissions' => array_fill_keys(config('siprakar_permissions.keys', []), true)]
+        );
+
+        return $role->id;
     }
 }

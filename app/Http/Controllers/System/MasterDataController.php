@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\System;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Cabang, Gedung, KategoriPekerjaan, Lantai, Ruang};
+use App\Models\{Cabang, Gedung, JenisIdentitas, KategoriPekerjaan, Lantai, RoleCategory, Ruang};
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -17,7 +17,15 @@ class MasterDataController extends Controller
             'gedungs' => Gedung::query()->with(['cabang','creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
             'lantais' => Lantai::query()->with(['gedung.cabang','creator:id,name','updater:id,name','deleter:id,name'])->orderBy('gedung_id')->orderBy('nomor_lantai')->get(),
             'ruangs' => Ruang::query()->with(['lantaiMaster.gedung.cabang','creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
-            'kategoris' => KategoriPekerjaan::query()->with(['creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
+            'kategoris' => KategoriPekerjaan::query()->with(['creator:id,name','updater:id,name','deleter:id,name','roleCategories.role'])->latest()->get(),
+            'roleCategories' => RoleCategory::query()->with('role')->where('is_active', true)->orderBy('role_id')->orderBy('name')->get()->map(fn (RoleCategory $rc) => [
+                'id' => $rc->id,
+                'name' => $rc->name,
+                'role_id' => $rc->role_id,
+                'role_nama' => $rc->role?->nama_role,
+                'full_label' => ($rc->role?->nama_role ?? '').' › '.$rc->name,
+            ])->values(),
+            'jenisIdentitas' => JenisIdentitas::query()->with(['creator:id,name','updater:id,name','deleter:id,name'])->latest()->get(),
             'permissions' => request()->user()->permissionMap(),
         ]);
     }
@@ -40,7 +48,17 @@ class MasterDataController extends Controller
         }
 
         $data['created_by'] = $request->user()->id;
-        $model::create($data);
+
+        if ($type === 'kategoris') {
+            $roleCategoryIds = array_map('intval', (array) ($data['role_category_ids'] ?? []));
+            unset($data['role_category_ids']);
+        }
+
+        $item = $model::create($data);
+
+        if ($type === 'kategoris' && ! empty($roleCategoryIds)) {
+            $item->syncRoleCategories($roleCategoryIds);
+        }
 
         return back()->with('success', 'Master data berhasil ditambahkan.');
     }
@@ -60,7 +78,17 @@ class MasterDataController extends Controller
             $data['kode_ruang'] = filled($data['kode_ruang'] ?? null) ? strtoupper($data['kode_ruang']) : null;
         }
         $data['updated_by'] = $request->user()->id;
+
+        if ($type === 'kategoris') {
+            $roleCategoryIds = array_map('intval', (array) ($data['role_category_ids'] ?? []));
+            unset($data['role_category_ids']);
+        }
+
         $item->update($data);
+
+        if ($type === 'kategoris') {
+            $item->syncRoleCategories($roleCategoryIds);
+        }
 
         return back()->with('success', 'Master data berhasil diperbarui.');
     }
@@ -103,6 +131,15 @@ class MasterDataController extends Controller
             ]],
             'kategoris' => [KategoriPekerjaan::class, [
                 'nama_kategori' => ['required', 'string', 'max:255'],
+                'keterangan' => ['nullable', 'string', 'max:1000'],
+                'status' => ['required', 'in:active,inactive'],
+                'role_category_ids' => ['nullable', 'array'],
+                'role_category_ids.*' => ['numeric'],
+            ]],
+            'jenis_identitas' => [JenisIdentitas::class, [
+                'nama_jenis' => ['required', 'string', 'max:100'],
+                'kode' => ['required', 'string', 'max:30', 'unique:jenis_identitas,kode,' . $id],
+                'keterangan' => ['nullable', 'string', 'max:500'],
                 'status' => ['required', 'in:active,inactive'],
             ]],
             default => abort(404, 'Jenis master data tidak tersedia.'),

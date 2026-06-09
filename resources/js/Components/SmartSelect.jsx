@@ -10,7 +10,6 @@ export default function SmartSelect({
     options = [],
     placeholder = "Pilih data",
     emptyText = "Tidak ada data yang sesuai",
-    limit = 6,
     required = false,
     disabled = false,
     className = "",
@@ -40,8 +39,8 @@ export default function SmartSelect({
         const filtered = keyword
             ? mappedOptions.filter((option) => normalize(`${option.value} ${option.label} ${option.description}`).includes(keyword))
             : mappedOptions;
-        return filtered.slice(0, limit);
-    }, [mappedOptions, keyword, limit]);
+        return filtered;
+    }, [mappedOptions, keyword]);
 
     useEffect(() => {
         if (!open) {
@@ -135,9 +134,6 @@ export default function SmartSelect({
                         </button>
                     )) : (
                         <div className="rounded-xl px-3 py-3 text-sm text-slate-500">{emptyText}</div>
-                    )}
-                    {mappedOptions.length > limit && (
-                        <div className="px-3 py-2 text-xs text-slate-500">Menampilkan maksimal {limit} data. Ketik untuk mencari data yang lebih spesifik.</div>
                     )}
                 </div>
             )}

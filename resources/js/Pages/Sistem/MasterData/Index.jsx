@@ -11,6 +11,8 @@ const tabs = [
     { key: "gedungs", label: "Gedung" },
     { key: "lantais", label: "Lantai" },
     { key: "ruangs", label: "Ruang" },
+    { key: "kategoris", label: "Kategori" },
+    { key: "jenis_identitas", label: "Jenis Identitas" },
 ];
 
 const emptyByType = {
@@ -18,6 +20,8 @@ const emptyByType = {
     gedungs: { cabang_id: "", nama_gedung: "", status: "active" },
     lantais: { gedung_id: "", nomor_lantai: "", nama_lantai: "", status: "active" },
     ruangs: { gedung_id: "", lantai_id: "", nama_ruang: "", kode_ruang: "", status: "active" },
+    kategoris: { nama_kategori: "", keterangan: "", status: "active", role_category_ids: [] },
+    jenis_identitas: { nama_jenis: "", kode: "", keterangan: "", status: "active" },
 };
 
 function StatusPill({ value }) {
@@ -56,6 +60,7 @@ function nameOf(row, active) {
     if (row.nomor_lantai !== undefined && row.nomor_lantai !== null) return formatLantai(row);
     if (row.nama_ruang) return row.nama_ruang;
     if (row.nama_kategori) return row.nama_kategori;
+    if (row.nama_jenis) return row.nama_jenis;
     if (row.name) return row.name;
     return "-";
 }
@@ -69,12 +74,22 @@ function relationOf(row, active) {
         return formatLantai(lt);
     }
     if (active === "kategoris") return row.keterangan || "-";
+    if (active === "jenis_identitas") return row.kode || "-";
     return "-";
 }
 
 // QuickAddForm: stays open after saving for batch add
-function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose }) {
-    const initial = item ? { ...emptyByType[type], ...item } : emptyByType[type];
+function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose, roleCategories }) {
+    const buildInitial = () => {
+        const base = emptyByType[type];
+        if (!item) return base;
+        const baseWithItem = { ...base, ...item };
+        if (type === 'kategoris' && item.roleCategories) {
+            baseWithItem.role_category_ids = item.roleCategories.map((rc) => String(rc.id));
+        }
+        return baseWithItem;
+    };
+    const initial = buildInitial();
 
     // For ruangs: pre-select gedung from first lantai's gedung
     const initialGedungId = type === "ruangs"
@@ -144,6 +159,8 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose }) {
                         form.setData({ ...emptyByType[type], gedung_id: selectedLantaiGedungId, status: form.data.status });
                     } else if (type === "ruangs") {
                         form.setData({ ...emptyByType[type], gedung_id: selectedGedungId, lantai_id: "", status: form.data.status });
+                    } else if (type === "kategoris") {
+                        form.setData({ ...emptyByType[type], status: form.data.status, role_category_ids: form.data.role_category_ids ?? [] });
                     } else {
                         form.setData(emptyByType[type]);
                     }
@@ -171,6 +188,7 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose }) {
                              type === "lantais" ? "Tambah data lantai pada gedung. Data lantai tidak boleh duplikat dalam satu gedung." :
                              type === "ruangs" ? "Tambah data ruang pada lantai." :
                              type === "kategoris" ? "Tambah kategori pekerjaan." :
+                             type === "jenis_identitas" ? "Tambah jenis identitas user." :
                              "Master data bertingkat."}
                         </p>
                     </div>
@@ -249,7 +267,46 @@ function QuickAddForm({ type, cabangs, gedungs, lantais, item, onClose }) {
                     </>}
 
                     {/* KATEGORIS */}
-                    {type === "kategoris" && <label className="block text-sm md:col-span-2">Nama Kategori<input className="input mt-1" value={form.data.nama_kategori} onChange={(e) => form.setData("nama_kategori", e.target.value)} required /></label>}
+                    {type === "kategoris" && (
+                        <>
+                            <label className="block text-sm md:col-span-2">Nama Kategori<input className="input mt-1" value={form.data.nama_kategori} onChange={(e) => form.setData("nama_kategori", e.target.value)} required /></label>
+                            <label className="block text-sm md:col-span-2">Keterangan<textarea className="input mt-1" rows="2" value={form.data.keterangan ?? ""} onChange={(e) => form.setData("keterangan", e.target.value)} placeholder="Jelaskan deskripsi atau penjelasan singkat tentang kategori ini..." /></label>
+                            <div className="block text-sm md:col-span-2">
+                                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Petugas yang Sesuai (Opsional)</label>
+                                <div className="mb-2 flex flex-wrap gap-1.5">
+                                    {roleCategories.filter((rc) => (form.data.role_category_ids ?? []).map(String).includes(String(rc.id))).map((rc) => (
+                                        <span key={rc.id} className="inline-flex items-center gap-1 rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">
+                                            {rc.full_label}
+                                            <button type="button" onClick={() => form.setData("role_category_ids", (form.data.role_category_ids ?? []).filter((id) => String(id) !== String(rc.id)))} className="ml-0.5 rounded-full hover:bg-[#6870fa]/30"><X size={10} /></button>
+                                        </span>
+                                    ))}
+                                </div>
+                                <SmartSelect
+                                    value=""
+                                    onChange={(val) => {
+                                        const current = (form.data.role_category_ids ?? []).map(String);
+                                        const valStr = String(val);
+                                        if (!current.includes(valStr)) form.setData("role_category_ids", [...current, valStr]);
+                                    }}
+                                    options={roleCategories.filter((rc) => !(form.data.role_category_ids ?? []).map(String).includes(String(rc.id)))}
+                                    placeholder="Cari dan pilih petugas yang sesuai..."
+                                    getOptionValue={(rc) => String(rc.id)}
+                                    getOptionLabel={(rc) => rc.full_label}
+                                    getOptionDescription={(rc) => rc.name !== rc.full_label.split(' › ')[1] ? rc.name : ""}
+                                />
+                                <p className="mt-1 text-xs text-slate-500">Pilih satu atau beberapa petugas/subkategori role yang cocok menangani kategori ini. Ini digunakan sebagai rekomendasi, bukan penugasan otomatis.</p>
+                            </div>
+                        </>
+                    )}
+
+                    {/* JENIS IDENTITAS */}
+                    {type === "jenis_identitas" && (
+                        <>
+                            <label className="block text-sm">Nama Jenis Identitas<input className="input mt-1" value={form.data.nama_jenis} onChange={(e) => form.setData("nama_jenis", e.target.value)} placeholder="Contoh: NIK Karyawan" required /></label>
+                            <label className="block text-sm">Kode<input className="input mt-1 uppercase" value={form.data.kode} onChange={(e) => form.setData("kode", e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30))} placeholder="Contoh: NIK_KARYAWAN" required /><span className="mt-1 block text-xs text-slate-500">Kode unik, contoh: NIK_KARYAWAN, NO_PEGAWAI</span></label>
+                            <label className="block text-sm md:col-span-2">Keterangan<textarea className="input mt-1" rows="2" value={form.data.keterangan ?? ""} onChange={(e) => form.setData("keterangan", e.target.value)} placeholder="Deskripsi singkat tentang jenis identitas ini..." /></label>
+                        </>
+                    )}
 
                     {/* STATUS */}
                     <div className="text-sm"><SmartSelect label="Status" value={form.data.status} onChange={(value) => form.setData("status", value)} options={[{ value: "active", label: "Aktif" }, { value: "inactive", label: "Nonaktif" }]} placeholder="Pilih status" /></div>
@@ -281,7 +338,25 @@ function DetailModal({ type, item, onClose }) {
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                     <Info label="Nama" value={nameOf(item, type)} />
-                    <Info label={type === "cabangs" ? "Kode" : "Relasi"} value={relationOf(item, type)} />
+                    {type === "jenis_identitas" ? (
+                        <Info label="Kode" value={item.kode || "-"} />
+                    ) : type !== "kategoris" ? (
+                        <Info label={type === "cabangs" ? "Kode" : "Relasi"} value={relationOf(item, type)} />
+                    ) : null}
+                    {type === "jenis_identitas" && item.keterangan ? (
+                        <div className="md:col-span-2"><Info label="Keterangan" value={item.keterangan} /></div>
+                    ) : null}
+                    {type === "kategoris" && item.keterangan && <Info label="Keterangan" value={item.keterangan} />}
+                    {type === "kategoris" && (
+                        <div className="md:col-span-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Petugas yang Sesuai</p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                {(item.roleCategories ?? []).length > 0 ? item.roleCategories.map((rc) => (
+                                    <span key={rc.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2.5 py-1 text-xs font-semibold text-[#6870fa]">{rc.role?.nama_role} › {rc.name}</span>
+                                )) : <span className="text-sm text-slate-500">Belum diatur</span>}
+                            </div>
+                        </div>
+                    )}
                     <Info label="Status" value={item.status === "active" ? "Aktif" : "Nonaktif"} />
                 </div>
                 {item.created_at && <div className="mt-4 text-xs text-slate-500">Dibuat: {new Date(item.created_at).toLocaleString('id-ID')}</div>}
@@ -316,6 +391,7 @@ function TableFilters({ active, cabangs, gedungs, lantais, ruangs, filters, onFi
             <SmartSelect key="lantai" value={filters.lantai_id ?? ""} onChange={(v) => onFilterChange({ ...filters, lantai_id: v })} options={[{ id: "", nama_lantai: "Semua lantai" }, ...scopedLantais]} placeholder="Filter lantai" getOptionValue={(x) => x.id} getOptionLabel={(x) => formatLantai(x)} />,
         ],
         kategoris: null,
+        jenis_identitas: null,
     };
 
     return activeFilters[active] ? (
@@ -327,7 +403,7 @@ function TableFilters({ active, cabangs, gedungs, lantais, ruangs, filters, onFi
     ) : null;
 }
 
-export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs = [], kategoris = [], permissions = {} }) {
+export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs = [], kategoris = [], roleCategories = [], jenisIdentitas = [], permissions = {} }) {
     const [active, setActive] = useState("cabangs");
     const [editing, setEditing] = useState(null);
     const [detail, setDetail] = useState(null);
@@ -337,8 +413,9 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
     const [tableFilters, setTableFilters] = useState({});
 
     const data = useMemo(() => ({
-        cabangs, gedungs, lantais, ruangs, kategoris
-    }), [cabangs, gedungs, lantais, ruangs, kategoris]);
+        cabangs, gedungs, lantais, ruangs, kategoris,
+        jenis_identitas: jenisIdentitas,
+    }), [cabangs, gedungs, lantais, ruangs, kategoris, jenisIdentitas]);
 
     const rows = useMemo(() => {
         let result = data[active] ?? [];
@@ -409,13 +486,29 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
 
                 {rows.length === 0 ? <EmptyState /> : (
                     <div className="table-shell">
-                        <table className={`data-table min-w-[900px] ${active === 'ruangs' ? 'min-w-[1100px]' : ''} table-fixed`}>
+                        <table className={`data-table min-w-[900px] ${active === 'ruangs' || active === 'kategoris' || active === 'jenis_identitas' ? 'min-w-[1100px]' : ''} table-fixed`}>
                             <thead>
                                 {active === 'ruangs' ? (
                                     <tr>
                                         <th>Nama Ruang</th>
                                         <th className="w-32">No Ruang</th>
                                         <th className="w-64">Lantai</th>
+                                        <th className="w-28 text-center">Status</th>
+                                        <th className="w-36 text-right">Aksi</th>
+                                    </tr>
+                                ) : active === 'kategoris' ? (
+                                    <tr>
+                                        <th>Nama Kategori</th>
+                                        <th className="w-64">Keterangan</th>
+                                        <th className="w-72">Petugas yang Sesuai</th>
+                                        <th className="w-28 text-center">Status</th>
+                                        <th className="w-36 text-right">Aksi</th>
+                                    </tr>
+                                ) : active === 'jenis_identitas' ? (
+                                    <tr>
+                                        <th>Nama Jenis</th>
+                                        <th className="w-40">Kode</th>
+                                        <th className="w-64">Keterangan</th>
                                         <th className="w-28 text-center">Status</th>
                                         <th className="w-36 text-right">Aksi</th>
                                     </tr>
@@ -445,9 +538,43 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                                                     </div>
                                                 </td>
                                             </>
+                                        ) : active === 'kategoris' ? (
+                                            <>
+                                                <td className="font-semibold"><div className="truncate" title={row.nama_kategori}>{row.nama_kategori}</div></td>
+                                                <td><div className="truncate" title={row.keterangan}>{row.keterangan || '-'}</div></td>
+                                                <td>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(row.roleCategories ?? []).length > 0 ? row.roleCategories.map((rc) => (
+                                                            <span key={rc.id} className="inline-flex items-center rounded-full bg-[#6870fa]/15 px-2 py-0.5 text-xs font-semibold text-[#6870fa]">{rc.role?.nama_role} › {rc.name}</span>
+                                                        )) : <span className="text-xs text-slate-500">Belum diatur</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="text-center"><StatusPill value={row.status} /></td>
+                                                <td className="text-right">
+                                                    <div className="table-actions">
+                                                        <button className="icon-btn" onClick={() => setDetail({ type: active, item: row })} title="Detail"><Eye size={14} /></button>
+                                                        {permissions["master_data.edit"] && <button className="icon-btn" onClick={() => setEditing({ type: active, item: row })} title="Edit"><Edit3 size={14} /></button>}
+                                                        {permissions["master_data.delete"] && <button className="icon-btn-danger" onClick={() => confirm("Hapus data ini?") && router.delete(`/master-data/${active}/${row.id}`, { preserveScroll: true })} title="Hapus"><Trash2 size={14} /></button>}
+                                                    </div>
+                                                </td>
+                                            </>
+                                        ) : active === 'jenis_identitas' ? (
+                                            <>
+                                                <td className="font-semibold"><div className="truncate" title={row.nama_jenis}>{row.nama_jenis}</div></td>
+                                                <td className="font-mono text-sm"><div className="truncate" title={row.kode}>{row.kode || '-'}</div></td>
+                                                <td><div className="truncate" title={row.keterangan}>{row.keterangan || '-'}</div></td>
+                                                <td className="text-center"><StatusPill value={row.status} /></td>
+                                                <td className="text-right">
+                                                    <div className="table-actions">
+                                                        <button className="icon-btn" onClick={() => setDetail({ type: active, item: row })} title="Detail"><Eye size={14} /></button>
+                                                        {permissions["master_data.edit"] && <button className="icon-btn" onClick={() => setEditing({ type: active, item: row })} title="Edit"><Edit3 size={14} /></button>}
+                                                        {permissions["master_data.delete"] && <button className="icon-btn-danger" onClick={() => confirm("Hapus data ini?") && router.delete(`/master-data/${active}/${row.id}`, { preserveScroll: true })} title="Hapus"><Trash2 size={14} /></button>}
+                                                    </div>
+                                                </td>
+                                            </>
                                         ) : (
                                             <>
-                                                <td className="font-semibold"><div className="truncate" title={nameOf(row, active)}>{nameOf(row, active)}</div></td>
+                                                <td className="font-semibold"><div className="truncate" title={row.name ?? row.nama_cabang ?? row.nama_gedung ?? row.nama_lantai ?? '-'}>{row.name ?? row.nama_cabang ?? row.nama_gedung ?? row.nama_lantai ?? '-'}</div></td>
                                                 <td><div className="truncate" title={relationOf(row, active)}>{relationOf(row, active)}</div></td>
                                                 <td className="text-center"><StatusPill value={row.status} /></td>
                                                 <td className="text-right">
@@ -474,6 +601,7 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                     cabangs={cabangs}
                     gedungs={gedungs}
                     lantais={lantais}
+                    roleCategories={roleCategories ?? []}
                     onClose={() => setEditing(null)}
                 />
             )}

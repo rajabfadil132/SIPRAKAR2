@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\System;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Cabang, Role, RoleCategory, User};
+use App\Models\{Cabang, JenisIdentitas, Role, RoleCategory, User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -59,7 +59,7 @@ class UserManagementController extends Controller
         return Inertia::render('Sistem/UserManagement/Form', [
             'roles' => $this->availableRoles($user)->with('activeCategories')->get(),
             'cabangs' => $this->availableCabangs($user)->get(),
-            'identityTypes' => $this->identityTypes(),
+            'jenisIdentitas' => JenisIdentitas::active()->orderBy('nama_jenis')->get(['id', 'nama_jenis', 'kode', 'keterangan']),
         ]);
     }
 
@@ -106,7 +106,7 @@ class UserManagementController extends Controller
             'item' => $users_management->load(['role', 'roleCategory', 'cabang', 'creator:id,name', 'updater:id,name']),
             'roles' => $this->availableRoles($actor)->with('activeCategories')->get(),
             'cabangs' => $this->availableCabangs($actor)->get(),
-            'identityTypes' => $this->identityTypes(),
+            'jenisIdentitas' => JenisIdentitas::active()->orderBy('nama_jenis')->get(['id', 'nama_jenis', 'kode', 'keterangan']),
         ]);
     }
 
@@ -183,7 +183,7 @@ class UserManagementController extends Controller
             $data['role_category_id'] = null;
         }
 
-        $data['identity_type'] = $this->identityTypeForRole($role);
+        $data['identity_type'] = $request->input('identity_type');
         $this->validateIdentityNumberForRole($data['identity_number'], $role);
         $data['user_type'] = $this->userTypeForRole($role);
 
@@ -192,7 +192,7 @@ class UserManagementController extends Controller
 
     private function isSuperadmin(User $user): bool
     {
-        return true;
+        return $user->roleKey() === 'superadmin';
     }
 
     private function availableRoles(User $actor)
@@ -254,15 +254,6 @@ class UserManagementController extends Controller
                 'role_id' => 'Admin cabang hanya boleh membuat/mengubah user non-admin di cabangnya sendiri.',
             ]);
         }
-    }
-
-    private function identityTypes(): array
-    {
-        return [
-            'NIK Karyawan',
-            'Kode Lembaga',
-            'No Pegawai',
-        ];
     }
 
     private function identityTypeForRole(Role $role): string

@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\Siprakar;
 
+use App\Enums\RabStatus;
 use App\Http\Controllers\Controller;
 use App\Models\{Cabang, KategoriPekerjaan, ProgramKerja, Rab, RabDetail};
-use App\Services\SequentialCodeGenerator;
+use App\Services\Siprakar\RabService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class RabController extends Controller
 {
+    public function __construct(
+        private readonly RabService $rabService,
+    ) {}
+
     public function index(Request $request)
     {
         $items = Rab::query()
@@ -104,43 +108,7 @@ class RabController extends Controller
         abort_if($program->converted_to_pekerjaan_id, 422, 'Program Kerja yang sudah menjadi Data Pekerjaan tidak dapat dibuatkan RAB baru.');
         abort_unless(in_array($program->status, ProgramKerja::ACTIVE_STATUSES, true), 422, 'RAB hanya bisa dibuat dari Program Kerja aktif.');
 
-        $rab = DB::transaction(function () use ($data, $program, $request) {
-            $rab = Rab::create([
-                'program_kerja_id' => $program->id,
-                'pekerjaan_id' => $program->converted_to_pekerjaan_id,
-                'tanggal_rab' => $data['tanggal_rab'] ?? now()->toDateString(),
-                'nomor_rab' => app(SequentialCodeGenerator::class)->rab($program->cabang_id),
-                'status_rab' => 'Diajukan',
-                'submitted_at' => now(),
-                'catatan' => $data['catatan'] ?? null,
-                'created_by' => $request->user()->id,
-            ]);
-
-            // Pre-fill RAB items dari estimasi program kerja
-            $totalRab = 0;
-            foreach ($program->estimasiItems as $item) {
-                $subtotal = (float) $item->jumlah_item * (float) $item->harga_satuan;
-                $totalRab += $subtotal;
-                $rab->details()->create([
-                    'nama_item' => $item->nama_item,
-                    'jumlah_item' => $item->jumlah_item,
-                    'harga_satuan' => $item->harga_satuan,
-                    'subtotal' => $subtotal,
-                    'keterangan' => $item->keterangan,
-                    'created_by' => $request->user()->id,
-                ]);
-            }
-
-            $rab->update(['total_rab' => $totalRab]);
-
-            $program->update([
-                'needs_rab' => true,
-                'status' => 'RAB Diajukan',
-                'updated_by' => $request->user()->id,
-            ]);
-
-            return $rab;
-        });
+        $rab = $this->rabService->createForProgram($program, $data, $request->user());
 
         return redirect()->route('rab.edit', $rab)->with('success', $rab->details()->count() > 0
             ? 'RAB berhasil dibuat dan langsung berstatus Diajukan. Item sudah diisi dari estimasi program kerja.'
@@ -188,10 +156,10 @@ class RabController extends Controller
     public function submit(Request $request, Rab $rab)
     {
         $this->ensureVisible($rab);
-        abort_unless(in_array($rab->status_rab, ['Direvisi'], true), 422, 'RAB hanya perlu diajukan ulang dari status Direvisi.');
+        abort_unless($rab->statusEnum() === RabStatus::REVISION, 422, 'RAB hanya perlu diajukan ulang dari status Direvisi.');
         abort_if($rab->details()->count() < 1, 422, 'Tambahkan minimal satu item sebelum mengajukan RAB.');
 
-        $this->changeStatus($rab, 'Diajukan', $request->user()->id, [
+        $this->rabService->changeStatus($rab, RabStatus::SUBMITTED, $request->user()->id, [
             'submitted_at' => now(),
             'reviewed_at' => null,
             'reviewed_by' => null,
@@ -204,10 +172,10 @@ class RabController extends Controller
     {
         $this->ensureVisible($rab);
         abort_unless($request->user()->hasPermission('rab.edit'), 403);
-        abort_unless(in_array($rab->status_rab, ['Diajukan', 'Direvisi'], true), 422, 'RAB hanya bisa disetujui dari status Diajukan atau Direvisi.');
+        abort_unless(in_array($rab->statusEnum()->value, RabStatus::editableKeys(), true), 422, 'RAB hanya bisa disetujui dari status Diajukan atau Direvisi.');
         abort_if($rab->details()->count() < 1, 422, 'RAB harus memiliki minimal satu item sebelum disetujui.');
 
-        $this->changeStatus($rab, 'Disetujui', $request->user()->id, [
+        $this->rabService->changeStatus($rab, RabStatus::APPROVED, $request->user()->id, [
             'reviewed_at' => now(),
             'reviewed_by' => $request->user()->id,
         ]);
@@ -219,10 +187,10 @@ class RabController extends Controller
     {
         $this->ensureVisible($rab);
         abort_unless($request->user()->hasPermission('rab.edit'), 403);
-        abort_unless(in_array($rab->status_rab, ['Diajukan', 'Direvisi'], true), 422, 'Revisi hanya bisa diminta dari status Diajukan atau Direvisi.');
+        abort_unless(in_array($rab->statusEnum()->value, RabStatus::editableKeys(), true), 422, 'Revisi hanya bisa diminta dari status Diajukan atau Direvisi.');
 
         $data = $request->validate(['catatan' => ['nullable', 'string', 'max:1000']]);
-        $this->changeStatus($rab, 'Direvisi', $request->user()->id, [
+        $this->rabService->changeStatus($rab, RabStatus::REVISION, $request->user()->id, [
             'catatan' => $data['catatan'] ?? $rab->catatan,
             'reviewed_at' => now(),
             'reviewed_by' => $request->user()->id,
@@ -235,10 +203,10 @@ class RabController extends Controller
     {
         $this->ensureVisible($rab);
         abort_unless($request->user()->hasPermission('rab.edit'), 403);
-        abort_unless(in_array($rab->status_rab, ['Diajukan', 'Direvisi'], true), 422, 'RAB hanya bisa ditolak dari status Diajukan atau Direvisi.');
+        abort_unless(in_array($rab->statusEnum()->value, RabStatus::editableKeys(), true), 422, 'RAB hanya bisa ditolak dari status Diajukan atau Direvisi.');
 
         $data = $request->validate(['catatan' => ['nullable', 'string', 'max:1000']]);
-        $this->changeStatus($rab, 'Ditolak', $request->user()->id, [
+        $this->rabService->changeStatus($rab, RabStatus::REJECTED, $request->user()->id, [
             'catatan' => $data['catatan'] ?? $rab->catatan,
             'reviewed_at' => now(),
             'reviewed_by' => $request->user()->id,
@@ -263,7 +231,7 @@ class RabController extends Controller
 
             $pekerjaan?->update(['is_rab' => false, 'updated_by' => auth()->id()]);
             if ($program && ! $program->converted_to_pekerjaan_id) {
-                $program->update(['status' => 'RAB Diajukan', 'updated_by' => auth()->id()]);
+                $program->update(['status_key' => \App\Enums\ProgramKerjaStatus::RAB_SUBMITTED->value, 'updated_by' => auth()->id()]);
             }
         });
 
@@ -277,13 +245,7 @@ class RabController extends Controller
 
         $data = $request->validate(['nama_item' => ['required', 'string', 'max:255'], 'jumlah_item' => ['required', 'numeric', 'min:0'], 'harga_satuan' => ['required', 'numeric', 'min:0'], 'keterangan' => ['nullable', 'string', 'max:500']]);
 
-        DB::transaction(function () use ($rab, $data, $request) {
-            $data['subtotal'] = $data['jumlah_item'] * $data['harga_satuan'];
-            $data['created_by'] = $request->user()->id;
-            $rab->details()->create($data);
-            $rab->update(['total_rab' => $rab->details()->sum('subtotal'), 'updated_by' => $request->user()->id]);
-            $this->markRabAsRevisedAfterItemChange($rab, $request->user()->id);
-        });
+        $this->rabService->createItem($rab, $data, $request->user()->id);
 
         return back()->with('success', 'Item RAB ditambahkan.');
     }
@@ -295,14 +257,7 @@ class RabController extends Controller
 
         $data = $request->validate(['nama_item' => ['required', 'string', 'max:255'], 'jumlah_item' => ['required', 'numeric', 'min:0'], 'harga_satuan' => ['required', 'numeric', 'min:0'], 'keterangan' => ['nullable', 'string', 'max:500']]);
 
-        DB::transaction(function () use ($detail, $data, $request) {
-            $data['subtotal'] = $data['jumlah_item'] * $data['harga_satuan'];
-            $data['updated_by'] = $request->user()->id;
-            $detail->update($data);
-            $rab = $detail->rab;
-            $rab->update(['total_rab' => $rab->details()->sum('subtotal'), 'updated_by' => $request->user()->id]);
-            $this->markRabAsRevisedAfterItemChange($rab, $request->user()->id);
-        });
+        $this->rabService->updateItem($detail, $data, $request->user()->id);
 
         return back()->with('success', 'Item RAB diperbarui.');
     }
@@ -312,13 +267,7 @@ class RabController extends Controller
         $this->ensureDetailVisible($detail);
         $this->ensureRabItemsEditable($detail->rab);
 
-        DB::transaction(function () use ($detail, $request) {
-            $rab = $detail->rab;
-            $detail->update(['deleted_by' => $request->user()->id]);
-            $detail->delete();
-            $rab->update(['total_rab' => $rab->details()->sum('subtotal'), 'updated_by' => $request->user()->id]);
-            $this->markRabAsRevisedAfterItemChange($rab, $request->user()->id);
-        });
+        $this->rabService->deleteItem($detail, $request->user()->id);
 
         return back()->with('success', 'Item RAB dihapus.');
     }
@@ -360,79 +309,12 @@ class RabController extends Controller
 
     private function rabItemsEditable(Rab $rab): bool
     {
-        return in_array($rab->status_rab, ['Diajukan', 'Direvisi'], true);
+        return $this->rabService->itemsEditable($rab);
     }
 
     private function ensureRabItemsEditable(Rab $rab): void
     {
-        if (! $this->rabItemsEditable($rab)) {
-            throw ValidationException::withMessages([
-                'status_rab' => 'Item RAB hanya bisa diedit saat status Diajukan atau Direvisi. RAB yang sudah disetujui akan terkunci.',
-            ]);
-        }
+        $this->rabService->ensureItemsEditable($rab);
     }
 
-    private function changeStatus(Rab $rab, string $status, int $userId, array $extra = []): void
-    {
-        DB::transaction(function () use ($rab, $status, $userId, $extra) {
-            $rab->loadMissing(['programKerja', 'pekerjaan']);
-            $rab->update($extra + [
-                'status_rab' => $status,
-                'updated_by' => $userId,
-            ]);
-
-            $programStatus = match ($status) {
-                'Diajukan' => 'RAB Diajukan',
-                'Disetujui' => 'RAB Disetujui',
-                'Ditolak' => 'Siap Dijadikan Pekerjaan',
-                'Direvisi' => 'RAB Direvisi',
-                default => $rab->programKerja?->status,
-            };
-
-            $programNeedsRab = match ($status) {
-                'Ditolak' => false,
-                default => true,
-            };
-
-            if ($rab->programKerja && ! $rab->programKerja->converted_to_pekerjaan_id) {
-                $rab->programKerja->update([
-                    'needs_rab' => $programNeedsRab,
-                    'status' => $programStatus,
-                    'updated_by' => $userId,
-                ]);
-            }
-            $rab->pekerjaan?->update([
-                'is_rab' => $status === 'Disetujui',
-                'updated_by' => $userId,
-            ]);
-        });
-    }
-
-
-    private function markRabAsRevisedAfterItemChange(Rab $rab, int $userId): void
-    {
-        $rab->refresh();
-        if ($rab->status_rab === 'Diajukan') {
-            $this->changeStatus($rab, 'Direvisi', $userId, [
-                'reviewed_at' => null,
-                'reviewed_by' => null,
-            ]);
-        }
-    }
-
-    private function rabStatusToast(?string $previousStatus, string $status, bool $created = false): string
-    {
-        if (! $created && $previousStatus === $status) {
-            return 'RAB diperbarui.';
-        }
-
-        return match ($status) {
-            'Diajukan' => 'Pengajuan RAB berhasil dikirim.',
-            'Disetujui' => 'Persetujuan RAB berhasil disimpan.',
-            'Direvisi' => 'Revisi RAB berhasil diminta.',
-            'Ditolak' => 'RAB ditolak.',
-            
-            default => $created ? 'RAB dibuat. Silakan tambahkan item RAB.' : 'Status RAB diperbarui.',
-        };
-    }
 }

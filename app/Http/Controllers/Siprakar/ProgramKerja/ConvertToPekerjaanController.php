@@ -43,7 +43,15 @@ class ConvertToPekerjaanController extends Controller
             'tanggal_mulai' => ['nullable', 'date'],
             'target_selesai' => ['nullable', 'date', 'after_or_equal:tanggal_mulai'],
             'keterangan' => ['nullable', 'string'],
+            'checklists' => ['nullable', 'array'],
+            'checklists.*' => ['nullable', 'string', 'max:255'],
         ]);
+
+        $data['checklists'] = array_values(array_filter($data['checklists'] ?? [
+            'Survei lokasi dan validasi kebutuhan',
+            'Pelaksanaan pekerjaan',
+            'Pemeriksaan akhir dan dokumentasi',
+        ]));
 
         $pekerjaan = $this->pekerjaanService->createFromProgramKerja($programKerja, $data, $request->user());
 

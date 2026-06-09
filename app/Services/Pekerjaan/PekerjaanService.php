@@ -2,6 +2,9 @@
 
 namespace App\Services\Pekerjaan;
 
+use App\Enums\PekerjaanStatus;
+use App\Enums\ProgramKerjaStatus;
+use App\Enums\RabStatus;
 use App\Models\Pekerjaan;
 use App\Models\PekerjaanChecklist;
 use App\Models\ProgramKerja;
@@ -36,6 +39,7 @@ class PekerjaanService
             $data = $this->normalizeLocationPayload($data);
 
             $checklists = $this->normalizeChecklist($data['checklists'] ?? []);
+            $this->assertAtLeastOneChecklist($checklists);
             $assignees = $this->normalizeAssignees($data['assignees'] ?? []);
             unset($data['checklists'], $data['assignees']);
 
@@ -50,6 +54,7 @@ class PekerjaanService
             $data['kode_pekerjaan'] = $program->kode_program;
             $this->ensurePekerjaanCodeIsUnique($data['kode_pekerjaan']);
             $data['progress'] = 0;
+            $data['status_key'] = PekerjaanStatus::NOT_STARTED->value;
             $data['prioritas'] = $data['prioritas'] ?? 'Sedang';
             $data['estimasi_rab_awal'] = $data['estimasi_rab_awal'] ?? 0;
             $data['is_rab'] = false;
@@ -88,6 +93,7 @@ class PekerjaanService
 
         return DB::transaction(function () use ($pekerjaan, $data, $user, $previousStatus) {
             $checklists = $this->normalizeChecklist($data['checklists'] ?? []);
+            $this->assertAtLeastOneChecklist($checklists);
             $assignees = $this->normalizeAssignees($data['assignees'] ?? []);
             unset($data['checklists'], $data['assignees']);
 
@@ -173,20 +179,20 @@ class PekerjaanService
     {
         $pekerjaan->refresh();
         $currentStatus = $pekerjaan->status;
-        $lockedStatuses = ['Dibatalkan'];
+        $lockedStatuses = [PekerjaanStatus::CANCELLED->label()];
         $total = $pekerjaan->checklists()->count();
         $done = $pekerjaan->checklists()->where('is_done', true)->count();
-        // CRITICAL FIX: pekerjaan tanpa checklist dianggap otomatis selesai
-        $progress = $total > 0 ? (int) round(($done / $total) * 100) : 100;
+        // Pekerjaan tanpa checklist tidak boleh dianggap selesai otomatis.
+        $progress = $total > 0 ? (int) round(($done / $total) * 100) : 0;
 
         if (in_array($currentStatus, $lockedStatuses, true)) {
             $status = $currentStatus;
         } elseif ($progress >= 100) {
-            $status = 'Selesai';
-        } elseif ($forceProcessing || $progress > 0 || $currentStatus === 'Diproses') {
-            $status = 'Diproses';
+            $status = PekerjaanStatus::COMPLETED->label();
+        } elseif ($forceProcessing || $progress > 0 || $currentStatus === PekerjaanStatus::IN_PROGRESS->label()) {
+            $status = PekerjaanStatus::IN_PROGRESS->label();
         } else {
-            $status = 'Belum Diproses';
+            $status = PekerjaanStatus::NOT_STARTED->label();
         }
 
         $tanggalSelesai = $status === 'Selesai' && $progress >= 100
@@ -196,13 +202,16 @@ class PekerjaanService
         $pekerjaan->update([
             'progress' => $progress,
             'status' => $status,
+            'status_key' => PekerjaanStatus::fromLabelOrKey($status)->value,
             'tanggal_selesai' => $tanggalSelesai,
             'updated_by' => $userId,
         ]);
 
         if ($pekerjaan->program_kerja_id) {
-            $programStatus = $status === 'Selesai' ? 'Selesai' : ($status === 'Dibatalkan' ? 'Dibatalkan' : 'Dijadikan Pekerjaan');
-            $pekerjaan->programKerja?->update(['status' => $programStatus, 'updated_by' => $userId]);
+            $programStatus = $status === PekerjaanStatus::COMPLETED->label()
+                ? ProgramKerjaStatus::COMPLETED
+                : ($status === PekerjaanStatus::CANCELLED->label() ? ProgramKerjaStatus::CANCELLED : ProgramKerjaStatus::CONVERTED);
+            $pekerjaan->programKerja?->update(['status_key' => $programStatus->value, 'updated_by' => $userId]);
         }
 
         $freshPekerjaan = $pekerjaan->fresh(['cabang', 'petugasTambahan']);
@@ -307,13 +316,13 @@ class PekerjaanService
         $program->loadMissing(['rab']);
         $program->update([
             'status_before_conversion' => $program->status_before_conversion ?: $program->status,
-            'status' => 'Dijadikan Pekerjaan',
+            'status_key' => ProgramKerjaStatus::CONVERTED->value,
             'converted_to_pekerjaan_id' => $pekerjaan->id,
             'converted_at' => now(),
             'updated_by' => $userId,
         ]);
 
-        if ($program->rab && $program->rab->status_rab === 'Disetujui') {
+        if ($program->rab && $program->rab->statusEnum() === RabStatus::APPROVED) {
             $program->rab->update(['pekerjaan_id' => $pekerjaan->id, 'updated_by' => $userId]);
             $pekerjaan->update(['is_rab' => true, 'updated_by' => $userId]);
         } else {
@@ -342,7 +351,9 @@ class PekerjaanService
 
         $program->loadMissing(['rab']);
         $program->update([
-            'status' => $program->status_before_conversion ?: ($program->needs_rab ? 'RAB Disetujui' : 'Siap Dijadikan Pekerjaan'),
+            'status_key' => $program->status_before_conversion
+                ? ProgramKerjaStatus::fromLabelOrKey($program->status_before_conversion)->value
+                : ($program->needs_rab ? ProgramKerjaStatus::RAB_APPROVED->value : ProgramKerjaStatus::READY_FOR_WORK->value),
             'converted_to_pekerjaan_id' => null,
             'converted_at' => null,
             'status_before_conversion' => null,
@@ -440,6 +451,15 @@ class PekerjaanService
                 $checklist->update(['deleted_by' => $userId]);
                 $checklist->delete();
             });
+    }
+
+    private function assertAtLeastOneChecklist(array $items): void
+    {
+        if (count($items) < 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'checklists' => 'Pekerjaan wajib memiliki minimal satu checklist agar progress tidak menjadi ambigu.',
+            ]);
+        }
     }
 
     private function assertAssignmentUsersCanReceiveWork(mixed $primaryUserId, array $assignees): void

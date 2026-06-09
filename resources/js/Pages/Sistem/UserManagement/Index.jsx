@@ -59,13 +59,13 @@ export default function Index({ items, filters = {}, permissions = {}, canManage
                 {rows.length === 0 ? <EmptyState /> : (
                     <div className="table-shell">
                         <table className="data-table min-w-[1180px] table-fixed">
-                            <thead><tr><th>User</th><th className="w-44">Identitas</th><th className="w-64">Email</th><th className="w-44">Role</th><th className="w-44">Cabang</th><th className="w-28 text-center">Status</th><th className="w-40 text-right">Aksi</th></tr></thead>
+                            <thead><tr><th className="w-52">User</th><th className="w-44">Identitas</th><th className="w-64 table-nowrap">Email</th><th className="w-40">Role</th><th className="w-36">Cabang</th><th className="w-24 text-center">Status</th><th className="w-28 text-right">Aksi</th></tr></thead>
                             <tbody>{rows.map((u) => <tr key={u.id}>
-                                <td><b>{u.name}</b><p className="text-xs text-slate-500">{u.phone ?? "-"}</p></td>
-                                <td><b className="text-sm text-[#4cceac]">{u.identity_type ?? "Identitas"}</b><p className="text-xs text-slate-500">{u.identity_number ?? "-"}</p></td>
+                                <td className="whitespace-nowrap"><b>{u.name}</b><p className="text-xs text-slate-500">{u.phone ?? "-"}</p></td>
+                                <td className="whitespace-nowrap"><b className="text-sm text-[#4cceac]">{u.identity_type ?? "Identitas"}</b><p className="text-xs text-slate-500">{u.identity_number ?? "-"}</p></td>
                                 <td className="table-nowrap">{u.email}</td>
-                                <td><b>{u.role?.nama_role ?? "-"}</b><p className="text-xs text-slate-500">{u.role_category?.name ?? u.roleCategory?.name ?? "Tanpa subkategori"}</p></td>
-                                <td>{u.cabang?.nama_cabang ?? "-"}</td>
+                                <td className="whitespace-nowrap"><b>{u.role?.nama_role ?? "-"}</b><p className="truncate text-xs text-slate-500">{u.role_category?.name ?? u.roleCategory?.name ?? "Tanpa subkategori"}</p></td>
+                                <td className="whitespace-nowrap">{u.cabang?.nama_cabang ?? "-"}</td>
                                 <td className="text-center"><StatusPill value={u.status} /></td>
                                 <td className="text-right"><div className="table-actions">{permissions["users.show"] && <Link href={`/users-management/${u.id}`} className="icon-btn" title="Lihat detail"><Eye size={15} /></Link>}{permissions["users.edit"] && <Link href={`/users-management/${u.id}/edit`} className="icon-btn" title="Edit"><Edit3 size={15} /></Link>}{permissions["users.delete"] && <button type="button" className="icon-btn-danger" onClick={() => confirm("Hapus user ini?") && router.delete(`/users-management/${u.id}`, { preserveScroll: true })} title="Hapus"><Trash2 size={15} /></button>}</div></td>
                             </tr>)}</tbody>

@@ -27,7 +27,8 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        return redirect()->route('dashboard')->with('success', 'Login berhasil. Anda diarahkan ke Dashboard SIPRAKAR.');
+        return redirect()->route($request->user()->accessibleRouteName())
+            ->with('success', 'Login berhasil. Anda diarahkan ke menu yang sesuai dengan hak akses Anda.');
     }
 
     public function destroy(Request $request): RedirectResponse
