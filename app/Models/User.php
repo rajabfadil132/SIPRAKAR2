@@ -93,17 +93,37 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        return $this->status === 'active';
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        $this->loadMissing(['role.permission', 'roleCategory']);
+
+        if (! $this->role || ! $this->role->is_active) {
+            return false;
+        }
+
+        if ($this->roleCategory && ! $this->roleCategory->is_active) {
+            return false;
+        }
+
+        if ($this->roleKey() === 'superadmin') {
+            return true;
+        }
+
+        return (bool) data_get($this->role?->permission?->permissions ?? [], $permission, false);
     }
 
     public function permissionMap(): array
     {
-        return array_fill_keys(config('siprakar_permissions.keys', []), $this->status === 'active');
+        return collect(config('siprakar_permissions.keys', []))
+            ->mapWithKeys(fn (string $permission) => [$permission => $this->hasPermission($permission)])
+            ->all();
     }
 
     public function canReceiveWorkAssignment(): bool
     {
-        return $this->status === 'active';
+        return $this->hasPermission('pekerjaan.progress') || $this->roleKey() === 'staff';
     }
 
     public function accessibleRouteName(): string

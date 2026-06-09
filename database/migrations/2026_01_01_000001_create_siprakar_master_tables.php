@@ -21,9 +21,9 @@ return new class extends Migration {
             $table->text('alamat')->nullable();
             $table->text('keterangan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -33,9 +33,9 @@ return new class extends Migration {
             if (! Schema::hasColumn('users', 'cabang_id')) $table->foreignId('cabang_id')->nullable()->after('role_id')->constrained('cabangs')->nullOnDelete();
             if (! Schema::hasColumn('users', 'phone')) $table->string('phone')->nullable()->after('cabang_id');
             if (! Schema::hasColumn('users', 'status')) $table->string('status')->default('active')->after('phone');
-            if (! Schema::hasColumn('users', 'created_by')) $table->unsignedBigInteger('created_by')->nullable();
-            if (! Schema::hasColumn('users', 'updated_by')) $table->unsignedBigInteger('updated_by')->nullable();
-            if (! Schema::hasColumn('users', 'deleted_by')) $table->unsignedBigInteger('deleted_by')->nullable();
+            if (! Schema::hasColumn('users', 'created_by')) $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            if (! Schema::hasColumn('users', 'updated_by')) $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            if (! Schema::hasColumn('users', 'deleted_by')) $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             if (! Schema::hasColumn('users', 'deleted_at')) $table->softDeletes();
         });
 
@@ -44,9 +44,9 @@ return new class extends Migration {
             $table->string('nama_kategori');
             $table->text('keterangan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -57,9 +57,9 @@ return new class extends Migration {
             $table->string('nama_gedung');
             $table->text('keterangan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
             $table->unique(['cabang_id', 'nama_gedung']);
@@ -72,9 +72,9 @@ return new class extends Migration {
             $table->string('nama_lantai')->nullable();
             $table->text('keterangan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
             $table->unique(['gedung_id', 'nomor_lantai']);
@@ -87,9 +87,9 @@ return new class extends Migration {
             $table->string('kode_ruang', 30)->nullable();
             $table->text('keterangan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
             $table->unique(['lantai_id', 'nama_ruang']);
@@ -103,8 +103,18 @@ return new class extends Migration {
         Schema::dropIfExists('gedungs');
         Schema::dropIfExists('kategori_pekerjaans');
         Schema::table('users', function (Blueprint $table) {
-            foreach (['role_id','cabang_id','phone','status','created_by','updated_by','deleted_by','deleted_at'] as $column) {
-                if (Schema::hasColumn('users', $column)) $table->dropColumn($column);
+            foreach (['role_id', 'cabang_id', 'created_by', 'updated_by', 'deleted_by'] as $column) {
+                if (Schema::hasColumn('users', $column)) {
+                    $table->dropConstrainedForeignId($column);
+                }
+            }
+            foreach (['phone', 'status'] as $column) {
+                if (Schema::hasColumn('users', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+            if (Schema::hasColumn('users', 'deleted_at')) {
+                $table->dropSoftDeletes();
             }
         });
         Schema::dropIfExists('cabangs');

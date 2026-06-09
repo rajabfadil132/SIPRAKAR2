@@ -9,8 +9,7 @@ return new class extends Migration {
     {
         Schema::table('program_kerjas', function (Blueprint $table) {
             if (! Schema::hasColumn('program_kerjas', 'converted_to_pekerjaan_id')) {
-                $table->unsignedBigInteger('converted_to_pekerjaan_id')->nullable()->after('status');
-                $table->index('converted_to_pekerjaan_id');
+                $table->foreignId('converted_to_pekerjaan_id')->nullable()->after('status')->constrained('pekerjaans')->nullOnDelete();
             }
             if (! Schema::hasColumn('program_kerjas', 'converted_at')) {
                 $table->timestamp('converted_at')->nullable()->after('converted_to_pekerjaan_id');
@@ -32,8 +31,7 @@ return new class extends Migration {
     {
         Schema::table('program_kerjas', function (Blueprint $table) {
             if (Schema::hasColumn('program_kerjas', 'converted_to_pekerjaan_id')) {
-                $table->dropIndex(['converted_to_pekerjaan_id']);
-                $table->dropColumn('converted_to_pekerjaan_id');
+                $table->dropConstrainedForeignId('converted_to_pekerjaan_id');
             }
             if (Schema::hasColumn('program_kerjas', 'converted_at')) {
                 $table->dropColumn('converted_at');

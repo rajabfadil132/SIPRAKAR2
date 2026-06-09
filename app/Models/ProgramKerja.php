@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ProgramKerjaStatus;
+use App\Enums\RabStatus;
 use App\Models\Concerns\TracksUserActions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -35,7 +37,7 @@ class ProgramKerja extends Model
 
     protected $fillable = [
         'kode_program', 'tahun', 'nama_program', 'deskripsi', 'cabang_id', 'kategori_id',
-        'prioritas', 'target_mulai', 'target_selesai', 'estimasi_anggaran', 'status', 'source_type', 'needs_rab',
+        'prioritas', 'target_mulai', 'target_selesai', 'estimasi_anggaran', 'status', 'status_key', 'source_type', 'needs_rab',
         'converted_to_pekerjaan_id', 'converted_at', 'status_before_conversion', 'keterangan',
         'lokasi_id', 'nama_gedung', 'nama_lantai', 'nama_ruang', 'no_ruang', 'lantai', 'location_text',
         'created_by', 'updated_by', 'deleted_by',
@@ -49,6 +51,15 @@ class ProgramKerja extends Model
         'needs_rab' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (ProgramKerja $program) {
+            $status = ProgramKerjaStatus::fromLabelOrKey($program->status_key ?: $program->status);
+            $program->status_key = $status->value;
+            $program->status = $status->label();
+        });
+    }
+
     public function lokasi(){return $this->belongsTo(\App\Models\Ruang::class, 'lokasi_id');}
     public function cabang(){return $this->belongsTo(Cabang::class);}
     public function kategori(){return $this->belongsTo(KategoriPekerjaan::class,'kategori_id');}
@@ -60,6 +71,11 @@ class ProgramKerja extends Model
     public function getEstimasiTotalAttribute(): float
     {
         return (float) ($this->estimasiItems->sum('subtotal') ?? 0);
+    }
+
+    public function statusEnum(): ProgramKerjaStatus
+    {
+        return ProgramKerjaStatus::fromLabelOrKey($this->status_key ?: $this->status);
     }
 
     public function scopeForCurrentUser($query)
@@ -75,7 +91,12 @@ class ProgramKerja extends Model
     {
         return $query
             ->whereNull('converted_to_pekerjaan_id')
-            ->whereIn('status', self::ACTIVE_STATUSES);
+            ->where(function ($statusQuery) {
+                $statusQuery->whereIn('status_key', ProgramKerjaStatus::activeKeys())
+                    ->orWhere(function ($legacy) {
+                        $legacy->whereNull('status_key')->whereIn('status', self::ACTIVE_STATUSES);
+                    });
+            });
     }
 
     public function scopeAvailableForPekerjaan($query, $currentProgramId = null)
@@ -91,12 +112,13 @@ class ProgramKerja extends Model
 
     public function isConverted(): bool
     {
-        return filled($this->converted_to_pekerjaan_id) || in_array($this->status, self::FINAL_STATUSES, true);
+        return filled($this->converted_to_pekerjaan_id)
+            || in_array($this->statusEnum()->value, ProgramKerjaStatus::finalKeys(), true);
     }
 
     public function hasApprovedRab(): bool
     {
-        return (bool) $this->rab && $this->rab->status_rab === 'Disetujui';
+        return (bool) $this->rab && $this->rab->statusEnum() === RabStatus::APPROVED;
     }
 
     public function canBecomePekerjaan(): bool
@@ -106,10 +128,10 @@ class ProgramKerja extends Model
         }
 
         if ($this->needs_rab) {
-            return $this->status === 'RAB Disetujui' && $this->hasApprovedRab();
+            return $this->statusEnum() === ProgramKerjaStatus::RAB_APPROVED && $this->hasApprovedRab();
         }
 
-        return $this->status === 'Siap Dijadikan Pekerjaan';
+        return $this->statusEnum() === ProgramKerjaStatus::READY_FOR_WORK;
     }
 
     public function sourceLabel(): string

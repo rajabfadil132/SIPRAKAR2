@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PekerjaanStatus;
 use App\Models\Concerns\TracksUserActions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,7 +14,7 @@ class Pekerjaan extends Model
     protected $fillable = [
         'program_kerja_id', 'kode_pekerjaan', 'nama_pekerjaan', 'deskripsi', 'cabang_id', 'lokasi_id',
         'nama_gedung', 'nama_lantai', 'nama_ruang', 'lantai', 'no_ruang', 'location_text', 'kategori_id', 'prioritas',
-        'penanggung_jawab_id', 'petugas_id', 'tanggal_mulai', 'target_selesai', 'tanggal_selesai', 'status', 'progress',
+        'penanggung_jawab_id', 'petugas_id', 'tanggal_mulai', 'target_selesai', 'tanggal_selesai', 'status', 'status_key', 'progress',
         'estimasi_rab_awal', 'is_rab', 'catatan', 'created_by', 'updated_by', 'deleted_by', 'delete_reason',
     ];
 
@@ -26,6 +27,15 @@ class Pekerjaan extends Model
         'is_rab' => 'boolean',
         'progress' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Pekerjaan $pekerjaan) {
+            $status = PekerjaanStatus::fromLabelOrKey($pekerjaan->status_key ?: $pekerjaan->status);
+            $pekerjaan->status_key = $status->value;
+            $pekerjaan->status = $status->label();
+        });
+    }
 
     public function getLabelLokasiAttribute(): string
     {
@@ -112,9 +122,14 @@ class Pekerjaan extends Model
         return $this->status ?: '-';
     }
 
+    public function statusEnum(): PekerjaanStatus
+    {
+        return PekerjaanStatus::fromLabelOrKey($this->status_key ?: $this->status);
+    }
+
     private function isFinishedForDuration(): bool
     {
-        return $this->status === 'Selesai' || (int) $this->progress >= 100;
+        return $this->statusEnum() === PekerjaanStatus::COMPLETED || (int) $this->progress >= 100;
     }
 
     private function durationReferenceDate()
@@ -191,7 +206,7 @@ class Pekerjaan extends Model
     {
         $counts = $this->checklistProgressCounts();
         if ($counts['total'] < 1) {
-            return max(0, min(100, (int) ($fallback ?? 0)));
+            return 0;
         }
         return (int) round(($counts['done'] / $counts['total']) * 100);
     }

@@ -1,15 +1,19 @@
 <?php
+
 namespace App\Models;
+
+use App\Enums\RabStatus;
+use App\Models\Concerns\TracksUserActions;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\Concerns\TracksUserActions;
+
 class Rab extends Model
 {
     use SoftDeletes, TracksUserActions;
 
     protected $fillable = [
         'program_kerja_id', 'pekerjaan_id', 'nomor_rab', 'tanggal_rab', 'total_rab',
-        'status_rab', 'submitted_at', 'reviewed_at', 'reviewed_by', 'catatan',
+        'status_rab', 'status_rab_key', 'submitted_at', 'reviewed_at', 'reviewed_by', 'catatan',
         'created_by', 'updated_by', 'deleted_by',
     ];
 
@@ -19,6 +23,20 @@ class Rab extends Model
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Rab $rab) {
+            $status = RabStatus::fromLabelOrKey($rab->status_rab_key ?: $rab->status_rab);
+            $rab->status_rab_key = $status->value;
+            $rab->status_rab = $status->label();
+        });
+    }
+
+    public function statusEnum(): RabStatus
+    {
+        return RabStatus::fromLabelOrKey($this->status_rab_key ?: $this->status_rab);
+    }
 
     public function pekerjaan() { return $this->belongsTo(Pekerjaan::class); }
     public function programKerja() { return $this->belongsTo(ProgramKerja::class); }

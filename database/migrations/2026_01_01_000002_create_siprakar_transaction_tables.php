@@ -20,19 +20,20 @@ return new class extends Migration {
             $table->date('target_selesai')->nullable();
             $table->decimal('estimasi_anggaran', 16, 2)->default(0);
             $table->string('status')->default('Siap Dijadikan Pekerjaan');
+            $table->string('status_key', 50)->default('ready_for_work')->index();
             $table->string('source_type', 20)->default('PROKER');
             $table->boolean('needs_rab')->default(false);
             $table->text('keterangan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
 
         Schema::create('pekerjaans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('program_kerja_id')->nullable()->constrained('program_kerjas')->nullOnDelete();
+            $table->foreignId('program_kerja_id')->constrained('program_kerjas')->restrictOnDelete();
             $table->string('kode_pekerjaan')->unique();
             $table->string('nama_pekerjaan');
             $table->text('deskripsi')->nullable();
@@ -44,29 +45,31 @@ return new class extends Migration {
             $table->date('tanggal_mulai')->nullable();
             $table->date('target_selesai')->nullable();
             $table->date('tanggal_selesai')->nullable();
-            $table->string('status')->default('Belum dilaksanakan');
+            $table->string('status')->default('Belum Diproses');
+            $table->string('status_key', 50)->default('not_started')->index();
             $table->unsignedTinyInteger('progress')->default(0);
             $table->boolean('is_rab')->default(false);
             $table->text('catatan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
 
         Schema::create('rabs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('program_kerja_id')->nullable()->constrained('program_kerjas')->cascadeOnDelete();
-            $table->foreignId('pekerjaan_id')->nullable()->constrained('pekerjaans')->cascadeOnDelete();
+            $table->foreignId('program_kerja_id')->nullable()->unique()->constrained('program_kerjas')->cascadeOnDelete();
+            $table->foreignId('pekerjaan_id')->nullable()->unique()->constrained('pekerjaans')->cascadeOnDelete();
             $table->string('nomor_rab')->unique();
             $table->date('tanggal_rab')->nullable();
             $table->decimal('total_rab', 16, 2)->default(0);
             $table->string('status_rab')->default('Diajukan');
+            $table->string('status_rab_key', 50)->default('submitted')->index();
             $table->text('catatan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -79,17 +82,16 @@ return new class extends Migration {
             $table->decimal('harga_satuan', 16, 2)->default(0);
             $table->decimal('subtotal', 16, 2)->default(0);
             $table->text('keterangan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
 
         Schema::create('progress_pekerjaans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('program_kerja_id')->nullable()->constrained('program_kerjas')->cascadeOnDelete();
-            $table->foreignId('pekerjaan_id')->nullable()->constrained('pekerjaans')->cascadeOnDelete();
+            $table->foreignId('pekerjaan_id')->constrained('pekerjaans')->cascadeOnDelete();
             $table->date('tanggal_update');
             $table->unsignedTinyInteger('progress');
             $table->string('status');
@@ -115,9 +117,9 @@ return new class extends Migration {
             $table->foreignId('petugas_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('status')->default('Aktif');
             $table->text('catatan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -132,9 +134,9 @@ return new class extends Migration {
             $table->string('pic')->nullable();
             $table->string('bidang_pekerjaan')->nullable();
             $table->string('status')->default('active');
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -148,9 +150,9 @@ return new class extends Migration {
             $table->date('tanggal_dokumen')->nullable();
             $table->string('file_dokumen')->nullable();
             $table->text('keterangan')->nullable();
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-            $table->unsignedBigInteger('deleted_by')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

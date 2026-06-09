@@ -24,9 +24,9 @@ return new class extends Migration {
                 $table->boolean('is_done')->default(false);
                 $table->foreignId('completed_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamp('completed_at')->nullable();
-                $table->unsignedBigInteger('created_by')->nullable();
-                $table->unsignedBigInteger('updated_by')->nullable();
-                $table->unsignedBigInteger('deleted_by')->nullable();
+                $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamps();
                 $table->softDeletes();
             });

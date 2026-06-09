@@ -21,7 +21,7 @@ return new class extends Migration {
                 $table->timestamp('reviewed_at')->nullable()->after('submitted_at');
             }
             if (! Schema::hasColumn('rabs', 'reviewed_by')) {
-                $table->unsignedBigInteger('reviewed_by')->nullable()->after('reviewed_at');
+                $table->foreignId('reviewed_by')->nullable()->after('reviewed_at')->constrained('users')->nullOnDelete();
             }
         });
     }

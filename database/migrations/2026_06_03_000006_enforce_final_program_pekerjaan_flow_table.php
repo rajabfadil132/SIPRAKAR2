@@ -39,11 +39,11 @@ return new class extends Migration {
 
         DB::table('pekerjaans')
             ->whereIn('status', ['Pending', 'Belum dilaksanakan'])
-            ->update(['status' => 'Belum Diproses']);
+            ->update(['status' => 'Belum Diproses', 'status_key' => 'not_started']);
 
         DB::table('pekerjaans')
             ->whereIn('status', ['Sedang berjalan', 'Berjalan', 'Tertunda'])
-            ->update(['status' => 'Diproses']);
+            ->update(['status' => 'Diproses', 'status_key' => 'in_progress']);
 
         if (Schema::hasTable('progress_pekerjaans')) {
             DB::table('progress_pekerjaans')
@@ -117,19 +117,7 @@ return new class extends Migration {
 
         DB::table('program_kerjas')
             ->where('status', 'Tertunda')
-            ->update(['status' => 'Dibatalkan']);
-
-        DB::table('program_kerjas')
-            ->whereIn('kode_program', [
-                'PROKER/PUS/26/0002',
-                'PROKER/WIT/26/0001',
-                'PROKER/SRG/26/0001',
-                'PROKER/VIK/26/0001',
-                'PROKER/PUS/26/0003',
-                'PROKER/SRG/26/0002',
-            ])
-            ->whereNull('converted_to_pekerjaan_id')
-            ->update(['status' => 'Dibatalkan']);
+            ->update(['status' => 'Dibatalkan', 'status_key' => 'cancelled']);
 
         if (Schema::hasTable('pekerjaans')) {
             $jobs = DB::table('pekerjaans')
@@ -154,6 +142,11 @@ return new class extends Migration {
                 DB::table('program_kerjas')->where('id', $program->id)->update([
                     'status_before_conversion' => $before,
                     'status' => $programStatus,
+                    'status_key' => match ($programStatus) {
+                        'Selesai' => 'completed',
+                        'Dibatalkan' => 'cancelled',
+                        default => 'converted',
+                    },
                     'converted_to_pekerjaan_id' => $program->converted_to_pekerjaan_id ?: $job->id,
                     'converted_at' => $program->converted_at ?: $job->created_at,
                 ]);
@@ -188,6 +181,15 @@ return new class extends Migration {
             DB::table('program_kerjas')->where('id', $program->id)->update([
                 'needs_rab' => $needsRab,
                 'status' => $status,
+                'status_key' => match ($status) {
+                    'RAB Diajukan' => 'rab_submitted',
+                    'RAB Direvisi' => 'rab_revision',
+                    'RAB Disetujui' => 'rab_approved',
+                    'Dijadikan Pekerjaan' => 'converted',
+                    'Selesai' => 'completed',
+                    'Dibatalkan' => 'cancelled',
+                    default => 'ready_for_work',
+                },
             ]);
         }
     }
