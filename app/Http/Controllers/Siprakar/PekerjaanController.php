@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Siprakar;
 
+use App\Enums\PekerjaanStatus;
+use App\Enums\RabStatus;
 use App\Http\Controllers\Controller;
 use App\Models\{Cabang, Gedung, KategoriPekerjaan, Lantai, Pekerjaan, PekerjaanChecklist, ProgramKerja, Role, Ruang, User};
 use App\Services\AppNotificationService;
@@ -235,7 +237,7 @@ class PekerjaanController extends Controller
     private function listFilterData(Request $request): array
     {
         return [
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->get(['id', 'nama_kategori']),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->get(['id', 'nama_kategori', 'keterangan']),
             'cabangs' => Cabang::where('status', 'active')->orderBy('nama_cabang')->get(['id', 'nama_cabang']),
             'users' => $this->assignableUsersFor($request->user()),
             'statuses' => $this->statuses,
@@ -308,8 +310,8 @@ class PekerjaanController extends Controller
             'status' => ['required', 'string', 'in:'.implode(',', array_merge($this->statuses, $this->legacyStatuses))],
             'estimasi_rab_awal' => ['nullable', 'numeric', 'min:0'],
             'catatan' => ['nullable', 'string'],
-            'checklists' => ['nullable', 'array'],
-            'checklists.*' => ['nullable', 'string', 'max:255'],
+            'checklists' => ['required', 'array', 'min:1'],
+            'checklists.*' => ['required', 'string', 'max:255'],
             'assignees' => ['nullable', 'array'],
             'assignees.*.role_text' => ['nullable', 'string', 'max:100'],
             'assignees.*.user_id' => ['nullable', 'exists:users,id'],
@@ -334,14 +336,19 @@ class PekerjaanController extends Controller
                         $q->orWhere($q->getModel()->getQualifiedKeyName(), $current->program_kerja_id);
                     }
                 })
-                ->with(['cabang:id,nama_cabang,kode', 'kategori:id,nama_kategori', 'rab:id,program_kerja_id,status_rab,total_rab'])
+                ->with([
+                    'cabang:id,nama_cabang,kode',
+                    'kategori:id,nama_kategori',
+                    'rab' => fn ($rab) => $rab->select('id', 'program_kerja_id', 'nomor_rab', 'status_rab', 'total_rab', 'status_rab_key')
+                        ->with(['details' => fn ($d) => $d->select('id', 'rab_id', 'nama_item', 'jumlah_item', 'harga_satuan', 'subtotal', 'keterangan')]),
+                ])
                 ->orderByDesc('created_at')
                 ->get(),
             'cabangs' => Cabang::where('status', 'active')->get(),
             'gedungs' => Gedung::where('status', 'active')->with(['cabang:id,nama_cabang'])->orderBy('nama_gedung')->get(),
             'lantais' => Lantai::where('status', 'active')->with(['gedung.cabang:id,nama_cabang'])->orderBy('nomor_lantai')->get(),
             'ruangs' => Ruang::where('status', 'active')->with(['lantaiMaster.gedung.cabang'])->get(),
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->get(),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->with('roleCategories:id,name')->get(['id', 'nama_kategori', 'keterangan']),
             'roles' => Role::active()->with('activeCategories')->orderBy('nama_role')->get(['id', 'nama_role', 'slug']),
             'users' => $this->assignableUsersFor(auth()->user()),
             'statuses' => $this->statuses,
@@ -392,13 +399,13 @@ class PekerjaanController extends Controller
         if (! $pekerjaan->rab) {
             return true;
         }
-        return $pekerjaan->rab->status_rab === 'Disetujui';
+        return $pekerjaan->rab->statusEnum() === RabStatus::APPROVED;
     }
 
     private function rabBlockMessage(Pekerjaan $pekerjaan): ?string
     {
         $pekerjaan->loadMissing('rab');
-        if (! $pekerjaan->rab || $pekerjaan->rab->status_rab === 'Disetujui') {
+        if (! $pekerjaan->rab || $pekerjaan->rab->statusEnum() === RabStatus::APPROVED) {
             return null;
         }
         return "Pekerjaan ini memiliki RAB dengan status {$pekerjaan->rab->status_rab}. Checklist baru bisa diperbarui setelah RAB disetujui.";
@@ -406,21 +413,15 @@ class PekerjaanController extends Controller
 
     private function normalizeStatus(?string $status): string
     {
-        return match ($status) {
-            'Belum Diproses', 'Pending', 'Belum dilaksanakan' => 'Belum Diproses',
-            'Diproses', 'Sedang berjalan', 'Berjalan', 'Tertunda' => 'Diproses',
-            'Selesai' => 'Selesai',
-            'Dibatalkan' => 'Dibatalkan',
-            default => 'Belum Diproses',
-        };
+        return PekerjaanStatus::fromLabelOrKey($status)->label();
     }
 
     private function guardManualFinishedStatus(?string $requestedStatus, ?Pekerjaan $pekerjaan = null): void
     {
-        if ($requestedStatus !== 'Selesai') {
+        if (PekerjaanStatus::fromLabelOrKey($requestedStatus) !== PekerjaanStatus::COMPLETED) {
             return;
         }
-        if ($pekerjaan && $pekerjaan->status === 'Selesai') {
+        if ($pekerjaan && $pekerjaan->statusEnum() === PekerjaanStatus::COMPLETED) {
             return;
         }
         throw ValidationException::withMessages([

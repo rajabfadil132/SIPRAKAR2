@@ -39,7 +39,7 @@ export default function LocationAutocomplete({
     lockCabang = false,
     showCabang = true,
     cabangPlaceholder = "Pilih cabang",
-    suggestionLimit = 6,
+    suggestionLimit = 9999,
 }) {
     const selectedCabangId = form.data.cabang_id ? String(form.data.cabang_id) : "";
 

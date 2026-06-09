@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Siprakar;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Cabang, KategoriPekerjaan, ProgramKerja, ProgramKerjaEstimasiItem, Rab};
-use App\Services\SequentialCodeGenerator;
+use App\Models\{Cabang, KategoriPekerjaan, ProgramKerja};
+use App\Services\Siprakar\ProgramKerjaService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ProgramKerjaController extends Controller
 {
     private array $statuses = ProgramKerja::STATUSES;
     private array $activeStatuses = ProgramKerja::ACTIVE_STATUSES;
+
+    public function __construct(
+        private readonly ProgramKerjaService $programKerjaService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -41,7 +44,7 @@ class ProgramKerjaController extends Controller
             'items' => $items,
             'filters' => $request->only('search', 'status', 'kategori_id', 'cabang_id', 'sort_dir'),
             'permissions' => $request->user()->permissionMap(),
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->get(['id', 'nama_kategori']),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->get(['id', 'nama_kategori', 'keterangan']),
             'cabangs' => Cabang::where('status', 'active')->orderBy('nama_cabang')->get(['id', 'nama_cabang']),
             'statuses' => $this->activeStatuses,
         ]);
@@ -56,33 +59,11 @@ class ProgramKerjaController extends Controller
     {
         $data = $this->validatedProgramPayload($request, true);
         unset($data['estimasi_items']);
-        $estimasiItems = $this->normalizeEstimasiItems($request->input('estimasi_items', []));
+
+        $estimasiItems = $this->programKerjaService->normalizeEstimasiItems($request->input('estimasi_items', []));
         $hasEstimasi = count($estimasiItems) > 0;
-        $estimasiTotal = $this->sumEstimasiItems($estimasiItems);
 
-        $user = $request->user();
-        if ($user->roleKey() !== 'superadmin') {
-            $data['cabang_id'] = $user->cabang_id;
-        }
-        $data['tahun'] = now()->year;
-
-        $program = DB::transaction(function () use ($data, $estimasiItems, $hasEstimasi, $estimasiTotal, $user) {
-            $data['kode_program'] = app(SequentialCodeGenerator::class)->program('PROKER', $data['cabang_id']);
-            $data['source_type'] = 'PROKER';
-            $data['created_by'] = $user->id;
-            $data['needs_rab'] = $hasEstimasi;
-            $data['status'] = $hasEstimasi ? 'RAB Diajukan' : 'Siap Dijadikan Pekerjaan';
-            $data['estimasi_anggaran'] = $estimasiTotal;
-
-            $program = ProgramKerja::create($data);
-            $this->replaceEstimasiItems($program, $estimasiItems, $user->id);
-
-            if ($hasEstimasi) {
-                $this->createAutoRabFromEstimasi($program->fresh('estimasiItems'), $user->id);
-            }
-
-            return $program;
-        });
+        $this->programKerjaService->create($data, $estimasiItems, $request->user());
 
         return redirect()->route('program-kerja.index')->with('success', $hasEstimasi
             ? 'Program kerja berhasil dibuat. Estimasi item otomatis menjadi RAB Diajukan.'
@@ -141,38 +122,9 @@ class ProgramKerjaController extends Controller
 
         $data = $this->validatedProgramPayload($request, false);
         unset($data['estimasi_items']);
-        $user = $request->user();
 
-        $program = DB::transaction(function () use ($programKerja, $data, $request, $user) {
-            $programKerja->loadMissing('rab', 'estimasiItems');
-            $hasRab = (bool) $programKerja->rab;
-
-            if (! $hasRab) {
-                $estimasiItems = $this->normalizeEstimasiItems($request->input('estimasi_items', []));
-                $hasEstimasi = count($estimasiItems) > 0;
-                $estimasiTotal = $this->sumEstimasiItems($estimasiItems);
-
-                $data['needs_rab'] = $hasEstimasi;
-                $data['status'] = $hasEstimasi ? 'RAB Diajukan' : 'Siap Dijadikan Pekerjaan';
-                $data['estimasi_anggaran'] = $estimasiTotal;
-                $data['updated_by'] = $user->id;
-
-                $programKerja->update($data);
-                $this->replaceEstimasiItems($programKerja, $estimasiItems, $user->id);
-
-                if ($hasEstimasi) {
-                    $this->createAutoRabFromEstimasi($programKerja->fresh('estimasiItems'), $user->id);
-                }
-            } else {
-                $data['needs_rab'] = $programKerja->rab->status_rab !== 'Ditolak';
-                $data['status'] = $this->programStatusFromRabStatus($programKerja->rab->status_rab);
-                $data['estimasi_anggaran'] = $programKerja->estimasiItems()->sum('subtotal');
-                $data['updated_by'] = $user->id;
-                $programKerja->update($data);
-            }
-
-            return $programKerja->fresh(['rab', 'estimasiItems']);
-        });
+        $estimasiItems = $this->programKerjaService->normalizeEstimasiItems($request->input('estimasi_items', []));
+        $program = $this->programKerjaService->update($programKerja, $data, $estimasiItems, $request->user());
 
         return redirect()->route('program-kerja.index')->with('success', $program->rab
             ? 'Program kerja diperbarui. RAB tetap mengikuti item estimasi/RAB yang sudah ada.'
@@ -201,7 +153,7 @@ class ProgramKerjaController extends Controller
     {
         return [
             'cabangs' => Cabang::where('status', 'active')->orderBy('nama_cabang')->get(),
-            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->get(),
+            'kategoris' => KategoriPekerjaan::where('status', 'active')->orderBy('nama_kategori')->with('roleCategories:id,name')->get(['id', 'nama_kategori', 'keterangan']),
         ];
     }
 
@@ -226,99 +178,6 @@ class ProgramKerjaController extends Controller
             'estimasi_items.*.harga_satuan' => ['nullable', 'numeric', 'min:0'],
             'estimasi_items.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);
-    }
-
-    private function normalizeEstimasiItems(array $items): array
-    {
-        return collect($items)
-            ->map(fn ($item) => [
-                'nama_item' => trim((string) ($item['nama_item'] ?? '')),
-                'jumlah_item' => (float) ($item['jumlah_item'] ?? 0),
-                'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
-                'keterangan' => filled($item['keterangan'] ?? null) ? trim((string) $item['keterangan']) : null,
-            ])
-            ->filter(fn ($item) => $item['nama_item'] !== '' && $item['jumlah_item'] > 0)
-            ->map(function ($item) {
-                $item['subtotal'] = $item['jumlah_item'] * $item['harga_satuan'];
-                return $item;
-            })
-            ->values()
-            ->all();
-    }
-
-    private function sumEstimasiItems(array $items): float
-    {
-        return (float) collect($items)->sum('subtotal');
-    }
-
-    private function replaceEstimasiItems(ProgramKerja $program, array $items, int $userId): void
-    {
-        $program->estimasiItems()->update(['deleted_by' => $userId]);
-        $program->estimasiItems()->delete();
-
-        foreach ($items as $item) {
-            $program->estimasiItems()->create($item + [
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-        }
-    }
-
-    private function createAutoRabFromEstimasi(ProgramKerja $program, int $userId): Rab
-    {
-        $program->loadMissing('estimasiItems', 'rab');
-
-        if ($program->rab) {
-            return $program->rab;
-        }
-
-        $rab = Rab::create([
-            'program_kerja_id' => $program->id,
-            'pekerjaan_id' => $program->converted_to_pekerjaan_id,
-            'tanggal_rab' => now()->toDateString(),
-            'nomor_rab' => app(SequentialCodeGenerator::class)->rab($program->cabang_id),
-            'status_rab' => 'Diajukan',
-            'submitted_at' => now(),
-            'catatan' => 'RAB otomatis dibuat dari estimasi item Program Kerja.',
-            'created_by' => $userId,
-            'updated_by' => $userId,
-        ]);
-
-        $totalRab = 0;
-        foreach ($program->estimasiItems as $item) {
-            $subtotal = (float) $item->jumlah_item * (float) $item->harga_satuan;
-            $totalRab += $subtotal;
-            $rab->details()->create([
-                'nama_item' => $item->nama_item,
-                'jumlah_item' => $item->jumlah_item,
-                'harga_satuan' => $item->harga_satuan,
-                'subtotal' => $subtotal,
-                'keterangan' => $item->keterangan,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-        }
-
-        $rab->update(['total_rab' => $totalRab, 'updated_by' => $userId]);
-        $program->update([
-            'needs_rab' => true,
-            'status' => 'RAB Diajukan',
-            'estimasi_anggaran' => $totalRab,
-            'updated_by' => $userId,
-        ]);
-
-        return $rab;
-    }
-
-    private function programStatusFromRabStatus(?string $rabStatus): string
-    {
-        return match ($rabStatus) {
-            'Diajukan' => 'RAB Diajukan',
-            'Direvisi' => 'RAB Direvisi',
-            'Disetujui' => 'RAB Disetujui',
-            'Ditolak' => 'Siap Dijadikan Pekerjaan',
-            default => 'RAB Diajukan',
-        };
     }
 
     private function ensureVisible(ProgramKerja $programKerja): void

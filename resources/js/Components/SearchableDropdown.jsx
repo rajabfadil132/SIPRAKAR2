@@ -11,7 +11,7 @@ export default function SearchableDropdown({
     options = [],
     placeholder = "Ketik atau pilih data",
     emptyText = "Tidak ada data yang sesuai",
-    limit = 6,
+    limit = 9999,
     className = "",
     required = false,
     disabled = false,
@@ -127,8 +127,8 @@ export default function SearchableDropdown({
                     )) : (
                         <div className="rounded-xl px-3 py-3 text-sm text-slate-500">{emptyText}</div>
                     )}
-                    {mappedOptions.length > limit && (
-                        <div className="px-3 py-2 text-xs text-slate-500">Menampilkan maksimal {limit} data. Ketik untuk mencari data yang lebih spesifik.</div>
+                    {mappedOptions.length > limit && !showAll && (
+                        <div className="px-3 py-2 text-xs text-slate-500">Menampilkan {limit} data. Ketik untuk mencari lebih spesifik.</div>
                     )}
                 </div>
             )}

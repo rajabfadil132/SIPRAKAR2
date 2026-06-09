@@ -10,6 +10,10 @@ import { useEffect, useMemo, useState } from "react";
 const dateValue = (value) => value?.slice?.(0, 10) ?? "";
 const formatNumber = (value) => String(value ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const onlyDigits = (value) => String(value ?? "").replace(/[^0-9]/g, "");
+const formatRupiah = (value) => {
+    const num = parseFloat(value ?? 0);
+    return num.toLocaleString("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
 const defaultChecklist = ["Survey lokasi dan kebutuhan", "Persiapan alat/material", "Pelaksanaan pekerjaan", "Pemeriksaan hasil pekerjaan"];
 
 export default function Form({ item, programs = [], selectedProgramId = "", cabangs = [], gedungs = [], lantais = [], ruangs = [], kategoris = [], users = [], roles = [] }) {
@@ -47,13 +51,30 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
         target_selesai: dateValue(item?.target_selesai),
         tanggal_selesai: dateValue(item?.tanggal_selesai),
         status: item?.status ?? "Belum Diproses",
-        estimasi_rab_awal: item?.estimasi_rab_awal ?? "",
         catatan: item?.catatan ?? "",
         checklists: existingChecklist.length ? existingChecklist : defaultChecklist,
         assignees: existingAssignees,
     });
 
     const selectedProgram = useMemo(() => programs.find((program) => String(program.id) === String(form.data.program_kerja_id)), [programs, form.data.program_kerja_id]);
+
+    const selectedKategori = useMemo(() => kategoris.find((k) => String(k.id) === String(form.data.kategori_id)), [kategoris, form.data.kategori_id]);
+
+    const filteredUsers = useMemo(() => {
+        if (!selectedKategori?.roleCategories?.length) return users;
+        const allowedIds = selectedKategori.roleCategories.map((rc) => rc.id);
+        return users.filter((user) => allowedIds.includes(user.role_category_id));
+    }, [users, selectedKategori]);
+
+    const rabInfo = useMemo(() => {
+        if (isEdit && item?.rab) {
+            return { hasRab: true, rab: item.rab };
+        }
+        if (selectedProgram?.rab) {
+            return { hasRab: true, rab: selectedProgram.rab };
+        }
+        return { hasRab: false, rab: null };
+    }, [isEdit, item, selectedProgram]);
 
     useEffect(() => {
         if (!selectedProgram) return;
@@ -68,7 +89,6 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
             prioritas: selectedProgram.prioritas ?? form.data.prioritas,
             tanggal_mulai: dateValue(selectedProgram.target_mulai) || form.data.tanggal_mulai,
             target_selesai: dateValue(selectedProgram.target_selesai) || form.data.target_selesai,
-            estimasi_rab_awal: selectedProgram.estimasi_anggaran ?? form.data.estimasi_rab_awal,
             lokasi_id: selectedProgram.lokasi_id ?? form.data.lokasi_id,
             nama_gedung: selectedProgram.nama_gedung ?? form.data.nama_gedung,
             nama_lantai: selectedProgram.nama_lantai ?? form.data.nama_lantai,
@@ -132,13 +152,57 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
                         {form.errors.program_kerja_id && <Error>{form.errors.program_kerja_id}</Error>}
                     </div>
                     <label className="md:col-span-2">Nama Pekerjaan<input className="input mt-1" value={form.data.nama_pekerjaan} onChange={(e) => form.setData("nama_pekerjaan", e.target.value)} required />{form.errors.nama_pekerjaan && <Error>{form.errors.nama_pekerjaan}</Error>}</label>
-                    <SmartSelect label="Kategori" value={form.data.kategori_id} onChange={(value) => form.setData("kategori_id", value)} options={kategoris} placeholder="Pilih kategori" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.nama_kategori} />
+                    <SmartSelect label="Kategori" value={form.data.kategori_id} onChange={(value) => form.setData("kategori_id", value)} options={kategoris} placeholder="Pilih kategori" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.nama_kategori} getOptionDescription={(x) => x.keterangan || ""} />
+                    {selectedKategori?.roleCategories?.length ? <span className="mt-1 block text-xs text-slate-500">Petugas & penanggung jawab difilter sesuai role yang sesuai dengan kategori ini.</span> : null}
                     <SmartSelect label="Prioritas" value={form.data.prioritas} onChange={(value) => form.setData("prioritas", value)} options={["Rendah", "Sedang", "Tinggi", "Mendesak"]} placeholder="Pilih prioritas" />
-                    <SmartSelect label="Penanggung Jawab" value={form.data.penanggung_jawab_id} onChange={(value) => form.setData("penanggung_jawab_id", value)} options={users} placeholder="Pilih penanggung jawab" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.name} getOptionDescription={(x) => [x.role?.nama_role, x.role_category?.name || x.roleCategory?.name, x.email].filter(Boolean).join(' · ') || 'User'} />
+                    <SmartSelect label="Penanggung Jawab" value={form.data.penanggung_jawab_id} onChange={(value) => form.setData("penanggung_jawab_id", value)} options={filteredUsers} placeholder="Pilih penanggung jawab" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.name} getOptionDescription={(x) => [x.role?.nama_role, x.role_category?.name || x.roleCategory?.name, x.email].filter(Boolean).join(' · ') || 'User'} />
                     <label>Tanggal Mulai<input type="date" className="input mt-1" value={form.data.tanggal_mulai} onChange={(e) => form.setData("tanggal_mulai", e.target.value)} /></label>
                     <label>Target Selesai<input type="date" className="input mt-1" value={form.data.target_selesai} onChange={(e) => form.setData("target_selesai", e.target.value)} /></label>
                     <div><SmartSelect label="Status" value={form.data.status} onChange={(value) => form.setData("status", value)} options={pekerjaanStatusOptions} placeholder="Pilih status" /><span className="mt-1 block text-xs text-slate-500">Status Selesai tidak dipilih manual. Jika semua checklist selesai, progress menjadi 100% dan status otomatis berubah menjadi Selesai.</span></div>
-                    <label>Estimasi Anggaran Awal<input className="input mt-1" inputMode="numeric" value={formatNumber(form.data.estimasi_rab_awal)} onChange={(e) => form.setData("estimasi_rab_awal", onlyDigits(e.target.value))} placeholder="Contoh: 5000000" /></label>
+                    <div className="md:col-span-2">
+                        <h3 className="mb-2 font-bold text-slate-300">Anggaran Biaya / RAB</h3>
+                        {rabInfo.hasRab && rabInfo.rab ? (
+                            <div className="rounded-xl border border-[#29314b] bg-[#141b2d] p-4">
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400">Disetujui</span>
+                                        <span className="text-sm text-slate-400">No. RAB: <span className="font-mono font-semibold text-slate-200">{rabInfo.rab.nomor_rab || '-'}</span></span>
+                                    </div>
+                                    <span className="text-sm font-bold text-emerald-400">{formatRupiah(rabInfo.rab.total_rab)}</span>
+                                </div>
+                                {(rabInfo.rab.details ?? []).length > 0 ? (
+                                    <table className="w-full text-left text-xs">
+                                        <thead>
+                                            <tr className="border-b border-[#29314b] text-slate-500">
+                                                <th className="pb-2 pr-3 font-medium">Nama Item</th>
+                                                <th className="w-16 pb-2 pr-3 text-right font-medium">Jumlah</th>
+                                                <th className="w-32 pb-2 pr-3 text-right font-medium">Harga Satuan</th>
+                                                <th className="w-32 pb-2 pr-3 text-right font-medium">Subtotal</th>
+                                                <th className="w-40 pb-2 font-medium">Keterangan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(rabInfo.rab.details ?? []).map((item) => (
+                                                <tr key={item.id} className="border-b border-dashed border-[#29314b]/50 last:border-0">
+                                                    <td className="py-2 pr-3 font-medium text-slate-200">{item.nama_item}</td>
+                                                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{formatNumber(item.jumlah_item)}</td>
+                                                    <td className="py-2 pr-3 text-right font-mono text-slate-300">{formatRupiah(item.harga_satuan)}</td>
+                                                    <td className="py-2 pr-3 text-right font-mono font-semibold text-slate-200">{formatRupiah(item.subtotal)}</td>
+                                                    <td className="py-2 text-slate-400">{item.keterangan || '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <p className="text-sm text-slate-500">Tidak ada detail item RAB.</p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="rounded-xl border border-dashed border-[#29314b] bg-[#141b2d] px-4 py-3">
+                                <span className="text-sm text-slate-500">Tanpa RAB — pekerjaan ini tidak menggunakan rincian anggaran.</span>
+                            </div>
+                        )}
+                    </div>
                     <label className="md:col-span-2">Deskripsi<textarea className="input mt-1" rows="4" value={form.data.deskripsi} onChange={(e) => form.setData("deskripsi", e.target.value)} /></label>
                     <label className="md:col-span-2">Catatan<textarea className="input mt-1" rows="3" value={form.data.catatan} onChange={(e) => form.setData("catatan", e.target.value)} /></label>
                     <div className="md:col-span-2">
@@ -161,7 +225,6 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
                             value={assignRole}
                             onChange={(value) => setAssignRole(value)}
                             options={roleOptions.map((role) => ({ value: role, label: role }))}
-                            limit={6}
                             placeholder="Ketik/pilih role, contoh: Teknisi"
                         />
                         <SearchableDropdown
@@ -176,8 +239,7 @@ export default function Form({ item, programs = [], selectedProgramId = "", caba
                                 setAssignUser(user.name ?? "");
                                 if (!assignRole) setAssignRole(user.role_category?.name || user.roleCategory?.name || user.role?.nama_role || '');
                             }}
-                            options={users}
-                            limit={6}
+                            options={filteredUsers}
                             placeholder="Ketik/pilih nama user"
                             getOptionValue={(user) => user.name}
                             getOptionLabel={(user) => user.name}

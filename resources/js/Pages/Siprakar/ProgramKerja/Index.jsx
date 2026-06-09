@@ -52,7 +52,7 @@ export default function Index({ items, filters = {}, permissions = {}, kategoris
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_200px_200px_auto]">
                         <SmartSelect value={status} onChange={(value) => setStatus(value)} options={[{ value: "", label: "Semua status" }, ...(statuses.length ? statuses : ["RAB Diajukan", "RAB Direvisi", "RAB Disetujui", "Siap Dijadikan Pekerjaan"])]} placeholder="Semua status" />
-                        <SmartSelect value={kategoriId} onChange={(value) => setKategoriId(value)} options={[{ id: "", nama_kategori: "Semua kategori" }, ...kategoris]} placeholder="Semua kategori" getOptionValue={(k) => k.id} getOptionLabel={(k) => k.nama_kategori} />
+                        <SmartSelect value={kategoriId} onChange={(value) => setKategoriId(value)} options={[{ id: "", nama_kategori: "Semua kategori" }, ...kategoris]} placeholder="Semua kategori" getOptionValue={(k) => k.id} getOptionLabel={(k) => k.nama_kategori} getOptionDescription={(k) => k.keterangan || ""} />
                         <SmartSelect value={cabangId} onChange={(value) => setCabangId(value)} options={[{ id: "", nama_cabang: "Semua cabang" }, ...cabangs]} placeholder="Semua cabang" getOptionValue={(c) => c.id} getOptionLabel={(c) => c.nama_cabang} getOptionDescription={(c) => c.kode ? `Kode ${c.kode}` : ""} />
                         <button className="btn-light justify-center" type="button" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")} title="Urut terbaru atau terlama"><ArrowDownUp size={16} className="mr-2" />{sortDir === "desc" ? "Terbaru" : "Terlama"}</button>
                     </div>
