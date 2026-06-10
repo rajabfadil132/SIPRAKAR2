@@ -218,7 +218,7 @@ export default function ArsipIndex({ items = { data: [], links: [] }, permission
 
                 {/* Filters */}
                 <div className="mb-4 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <input
@@ -234,7 +234,7 @@ export default function ArsipIndex({ items = { data: [], links: [] }, permission
                             <XCircle size={16} className="mr-2" />Reset
                         </button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[190px_190px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[190px_190px_auto]">
                         <SmartSelect
                             value={cabangId}
                             onChange={(value) => { setCabangId(value); handleFilterChange(active); }}
@@ -261,7 +261,7 @@ export default function ArsipIndex({ items = { data: [], links: [] }, permission
                     <EmptyState />
                 ) : (
                     <div className="table-shell">
-                        <table className="data-table min-w-[1200px] table-fixed">
+                        <table className="data-table min-w-[1000px] table-fixed">
                             <thead>
                                 <tr>
                                     {active === "program-kerja" && (

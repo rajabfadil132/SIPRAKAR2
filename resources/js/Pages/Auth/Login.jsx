@@ -2,7 +2,7 @@ import InputError from '@/Components/InputError';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import TurnstileCaptcha from '@/Components/TurnstileCaptcha';
-import { ArrowRight, LockKeyhole, Mail } from 'lucide-react';
+import { ArrowRight, LockKeyhole, Mail, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Login({ status, canResetPassword, turnstile = {} }) {
@@ -26,7 +26,7 @@ export default function Login({ status, canResetPassword, turnstile = {} }) {
 
 
     return (
-        <GuestLayout title="Login LPAUD" subtitle="Masuk untuk mengelola Program Kerja, RAB, Data Pekerjaan, dan progress SIPRAKAR.">
+        <GuestLayout title="Login" subtitle="Masuk untuk mengelola Program Kerja, RAB, Data Pekerjaan, dan progress SIPRAKAR.">
             <Head title="Log in" />
 
             {status && (
@@ -69,7 +69,14 @@ export default function Login({ status, canResetPassword, turnstile = {} }) {
                     <ArrowRight size={18} className="ml-2 transition group-hover:translate-x-1" />
                 </button>
 
-                <p className="text-center text-sm text-slate-500">Akun dibuat oleh admin SIPRAKAR melalui menu User Management.</p>
+                <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+                    <UserPlus size={14} />
+                    <span>Belum punya akun?</span>
+                    <Link href={route('register')} className="font-bold text-[#4cceac] hover:text-[#38b797]">
+                        Daftar di sini
+                    </Link>
+                </div>
+
             </form>
         </GuestLayout>
     );

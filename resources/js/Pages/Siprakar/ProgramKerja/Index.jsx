@@ -43,14 +43,14 @@ export default function Index({ items, filters = {}, permissions = {}, kategoris
 
             <div className="page-card">
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder="Cari kode, nama program, cabang, kategori..." type="search" />
                         </div>
                         <button className="btn-light justify-center" type="button" onClick={() => { setSearch(""); setStatus(""); setKategoriId(""); setCabangId(""); setSortDir("desc"); }}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_200px_200px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[180px_200px_200px_auto]">
                         <SmartSelect value={status} onChange={(value) => setStatus(value)} options={[{ value: "", label: "Semua status" }, ...(statuses.length ? statuses : ["RAB Diajukan", "RAB Direvisi", "RAB Disetujui", "Siap Dijadikan Pekerjaan"])]} placeholder="Semua status" />
                         <SmartSelect value={kategoriId} onChange={(value) => setKategoriId(value)} options={[{ id: "", nama_kategori: "Semua kategori" }, ...kategoris]} placeholder="Semua kategori" getOptionValue={(k) => k.id} getOptionLabel={(k) => k.nama_kategori} getOptionDescription={(k) => k.keterangan || ""} />
                         <SmartSelect value={cabangId} onChange={(value) => setCabangId(value)} options={[{ id: "", nama_cabang: "Semua cabang" }, ...cabangs]} placeholder="Semua cabang" getOptionValue={(c) => c.id} getOptionLabel={(c) => c.nama_cabang} getOptionDescription={(c) => c.kode ? `Kode ${c.kode}` : ""} />

@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from "react";
+
 const chartPalette = ["#d61a52", "#2563eb", "#14b8a6", "#f59e0b", "#22c55e", "#ef4444", "#8b5cf6", "#f97316"];
 
 const toNumber = (value) => Number(value ?? 0);
@@ -241,16 +243,16 @@ export function DashboardBarChart({ title = "Data", data = [], empty = "Belum ad
     return (
         <div className="page-card theme-chart-card min-w-0 overflow-hidden">
             <ChartTitle title={title} />
-            <div className="space-y-3">
+            <div className="space-y-2">
                 {rows.map((row, index) => {
                     const value = toNumber(row.total);
-                    const width = Math.max(7, (value / max) * 100);
+                    const width = Math.max(5, (value / max) * 100);
                     const barColor = row.color ?? (index % 4 === 0 ? "#3b82f6" : index % 4 === 1 ? "#22c55e" : index % 4 === 2 ? color : "#fb7185");
                     return (
-                        <div key={row.label} className="grid min-w-0 grid-cols-[90px_minmax(0,1fr)] items-center gap-3" title={`${row.label}: ${value} data`}>
-                            <span className="chart-label truncate text-xs font-semibold">{row.label}</span>
+                        <div key={row.label} className="grid min-w-0 grid-cols-[90px_minmax(0,1fr)] items-center gap-2" title={`${row.label}: ${value} program`}>
+                            <span className="chart-label truncate text-[11px] font-semibold">{row.label}</span>
                             <div className="chart-bar-track min-w-0 overflow-hidden rounded">
-                                <div className="flex h-8 items-center justify-end rounded px-2 text-xs font-black text-white" style={{ width: `${width}%`, backgroundColor: barColor }}>
+                                <div className="flex h-6 items-center rounded px-2 text-[10px] font-black text-white" style={{ width: `${width}%`, backgroundColor: barColor }}>
                                     {value}
                                 </div>
                             </div>
@@ -263,12 +265,24 @@ export function DashboardBarChart({ title = "Data", data = [], empty = "Belum ad
 }
 
 export function DashboardLineChart({ title = "Tren 6 Bulan Terakhir", data = [], valueKey = "total", series = null, color = "#ff5c7a", empty = "Belum ada data untuk ditampilkan." }) {
+    const [containerWidth, setContainerWidth] = useState(0);
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const observer = new ResizeObserver(([entry]) => setContainerWidth(entry.contentRect.width));
+        observer.observe(el);
+        setContainerWidth(el.clientWidth);
+        return () => observer.disconnect();
+    }, []);
+
     if (!data.length) {
         return <EmptyChart>{empty}</EmptyChart>;
     }
 
     const chartSeries = series?.length ? series : [{ key: valueKey, label: "Total", color }];
-    const width = 520;
+    const width = Math.max(300, containerWidth);
     const height = 230;
     const padding = { top: 20, right: 22, bottom: 38, left: 38 };
     const innerWidth = width - padding.left - padding.right;
@@ -282,7 +296,8 @@ export function DashboardLineChart({ title = "Tren 6 Bulan Terakhir", data = [],
     return (
         <div className="page-card theme-chart-card min-w-0 overflow-hidden">
             <ChartTitle title={title} />
-            <svg viewBox={`0 0 ${width} ${height}`} className="theme-chart-svg block h-[230px] w-full max-w-full" role="img" aria-label={title} preserveAspectRatio="none">
+            <div ref={containerRef} className="w-full min-w-0">
+            <svg viewBox={`0 0 ${width} ${height}`} className="theme-chart-svg block h-[230px] w-full" role="img" aria-label={title} preserveAspectRatio="none">
                 {ySteps.map((value) => {
                     const yy = y(value);
                     return (
@@ -319,6 +334,7 @@ export function DashboardLineChart({ title = "Tren 6 Bulan Terakhir", data = [],
                     );
                 })}
             </svg>
+            </div>
             <div className="chart-legend mt-2 flex flex-wrap gap-3 text-xs font-semibold">
                 {chartSeries.map((item, index) => (
                     <span key={item.key} className="inline-flex items-center gap-1.5">

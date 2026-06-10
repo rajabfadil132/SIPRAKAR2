@@ -44,11 +44,11 @@ export default function Index({ items, filters = {}, permissions = {}, canManage
             </div>
             <div className="page-card">
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder="Cari nama, NIK/NIM/NIP, email, role, subkategori, cabang..." type="search" /></div>
                         <button className="btn-light justify-center" type="button" onClick={() => { setSearch(""); setStatus(""); setRoleId(""); setCategoryId(""); setCabangId(""); setSortDir("desc"); }}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[160px_180px_210px_200px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[160px_180px_210px_200px_auto]">
                         <SmartSelect value={status} onChange={(value) => setStatus(value)} options={[{ value: "", label: "Semua status" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }, { value: "suspended", label: "Suspended" }]} placeholder="Semua status" />
                         <SmartSelect value={roleId} onChange={chooseRole} options={[{ id: "", nama_role: "Semua role" }, ...roles]} placeholder="Semua role" getOptionValue={(r) => r.id} getOptionLabel={(r) => r.nama_role} />
                         <SmartSelect value={categoryId} onChange={(value) => setCategoryId(value)} options={[{ id: "", name: "Semua subkategori" }, ...categoryOptions]} placeholder="Semua subkategori" getOptionValue={(r) => r.id} getOptionLabel={(r) => r.name} getOptionDescription={(r) => r.role?.nama_role ?? ""} />

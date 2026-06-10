@@ -513,7 +513,7 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                 </div>
 
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className="input pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Cari ${tabs.find(t => t.key === active)?.label?.toLowerCase() ?? 'data'}...`} type="search" /></div>
                         <button className="btn-light justify-center" type="button" onClick={() => { setSearch(""); setStatusFilter(""); setTableFilters({}); }}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
@@ -528,7 +528,7 @@ export default function Index({ cabangs = [], gedungs = [], lantais = [], ruangs
                         onFilterChange={setTableFilters}
                     />
 
-                    <div className="grid gap-3 md:grid-cols-[180px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[180px_auto]">
                         <SmartSelect value={statusFilter} onChange={(value) => setStatusFilter(value)} options={[{ value: "", label: "Semua status" }, { value: "active", label: "Aktif" }, { value: "inactive", label: "Nonaktif" }]} placeholder="Semua status" />
                         <button className="btn-light justify-center" type="button" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}><ArrowDownUp size={16} className="mr-2" />{sortDir === "desc" ? "Terbaru" : "Terlama"}</button>
                     </div>

@@ -30,11 +30,11 @@ export default function Index({ items, summary, filters = {} }) {
                     <button className="btn-light" type="button" onClick={() => window.print()}><Printer size={16} className="mr-2" />Print</button>
                 </div>
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder="Cari pekerjaan, kode, cabang, kategori, petugas..." type="search" /></div>
                         <button className="btn-light justify-center" type="button" onClick={() => { setSearch(""); setStatus(""); }}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-[220px]">
+                    <div className="grid gap-3 sm:grid-cols-[220px]">
                         <SmartSelect value={status} onChange={(value) => setStatus(value)} options={[{ value: "", label: "Semua status" }, "Belum Diproses", "Diproses", "Selesai", "Dibatalkan"]} placeholder="Semua status" />
                     </div>
                 </div>

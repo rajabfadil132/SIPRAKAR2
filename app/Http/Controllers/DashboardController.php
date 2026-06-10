@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{Pekerjaan, ProgramKerja, Rab};
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -11,7 +12,6 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $user = $request->user();
-        $isSuperadmin = $user->roleKey() === 'superadmin';
         $canViewRab = $user->hasPermission('rab.view');
 
         $pekerjaan = Pekerjaan::query()->forCurrentUser();
@@ -20,33 +20,20 @@ class DashboardController extends Controller
 
         $progressValues = (clone $pekerjaan)->withChecklistProgress()->get(['id'])->pluck('progress');
 
-        $statusMap = [
-            'Belum dilaksanakan' => 'Belum Diproses',
-            'Berjalan' => 'Diproses',
-            'Selesai' => 'Selesai',
-            'Dibatalkan' => 'Dibatalkan',
-        ];
+        $statusCounts = DB::table('pekerjaans')
+            ->join('cabangs', 'pekerjaans.cabang_id', '=', 'cabangs.id')
+            ->where('pekerjaans.status', 'Selesai')
+            ->selectRaw("cabangs.nama_cabang as label, COUNT(*) as total")
+            ->groupBy('cabangs.nama_cabang')
+            ->orderByDesc('total')
+            ->get();
 
-        $statusCounts = collect($statusMap)->map(fn ($databaseStatus, $label) => [
-            'label' => $label,
-            'total' => (clone $pekerjaan)->where('status', $databaseStatus)->count(),
-        ])->values();
-
-        $barCounts = $isSuperadmin
-            ? (clone $pekerjaan)
-                ->leftJoin('cabangs', 'pekerjaans.cabang_id', '=', 'cabangs.id')
-                ->selectRaw("COALESCE(cabangs.nama_cabang, 'Belum ditentukan') as label, COUNT(*) as total")
-                ->groupBy('cabangs.nama_cabang')
-                ->orderByDesc('total')
-                ->limit(8)
-                ->get()
-            : (clone $pekerjaan)
-                ->leftJoin('kategori_pekerjaans', 'pekerjaans.kategori_id', '=', 'kategori_pekerjaans.id')
-                ->selectRaw("COALESCE(kategori_pekerjaans.nama_kategori, 'Belum ditentukan') as label, COUNT(*) as total")
-                ->groupBy('kategori_pekerjaans.nama_kategori')
-                ->orderByDesc('total')
-                ->limit(8)
-                ->get();
+        $barCounts = DB::table('program_kerjas')
+            ->join('cabangs', 'program_kerjas.cabang_id', '=', 'cabangs.id')
+            ->selectRaw("cabangs.nama_cabang as label, COUNT(*) as total")
+            ->groupBy('cabangs.nama_cabang')
+            ->orderByDesc('total')
+            ->get();
 
         $nearDeadlineQuery = Pekerjaan::query()
             ->forCurrentUser()
@@ -190,7 +177,6 @@ class DashboardController extends Controller
             ],
             'statusCounts' => $statusCounts,
             'barCounts' => $barCounts,
-            'barTitle' => $isSuperadmin ? 'Pekerjaan per Cabang' : 'Pekerjaan per Kategori',
             'trend' => $trend,
             'recentPekerjaan' => Pekerjaan::query()
                 ->forCurrentUser()

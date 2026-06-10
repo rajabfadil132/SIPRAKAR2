@@ -28,11 +28,11 @@ export default function Index({ items, filters = {}, permissions = {}, cabangs =
             </div>
             <div className="page-card">
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder="Cari nomor RAB, program, cabang, status..." type="search" /></div>
                         <button className="btn-light justify-center" type="button" onClick={() => { setSearch(""); setStatusRab(""); setCabangId(""); setKategoriId(""); setSortDir("desc"); }}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_200px_200px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[180px_200px_200px_auto]">
                         <SmartSelect value={statusRab} onChange={(value) => setStatusRab(value)} options={[{ value: "", label: "Semua status" }, "Diajukan", "Direvisi", "Disetujui", "Ditolak"]} placeholder="Semua status" />
                         <SmartSelect value={cabangId} onChange={(value) => setCabangId(value)} options={[{ id: "", nama_cabang: "Semua cabang" }, ...cabangs]} placeholder="Semua cabang" getOptionValue={(c) => c.id} getOptionLabel={(c) => c.nama_cabang} getOptionDescription={(c) => c.kode ? `Kode ${c.kode}` : ""} />
                         <SmartSelect value={kategoriId} onChange={(value) => setKategoriId(value)} options={[{ id: "", nama_kategori: "Semua kategori" }, ...kategoris]} placeholder="Semua kategori" getOptionValue={(k) => k.id} getOptionLabel={(k) => k.nama_kategori} />

@@ -68,11 +68,11 @@ export default function Index({ items, filters = {}, permissions = {}, kategoris
 
             <div className="page-card">
                 <div className="mb-5 space-y-3">
-                    <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                         <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" placeholder="Cari kode, pekerjaan, cabang, kategori, petugas..." type="search" /></div>
                         <button className="btn-light justify-center" type="button" onClick={resetFilters}><XCircle size={16} className="mr-2" />Reset</button>
                     </div>
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_190px_190px_190px_auto]">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[180px_190px_190px_190px_auto]">
                         <SmartSelect value={status} onChange={(value) => setStatus(value)} options={[{ value: "", label: "Semua status" }, ...(statuses.length ? statuses : ["Belum Diproses", "Diproses", "Selesai", "Dibatalkan"])]} placeholder="Semua status" />
                         <SmartSelect value={kategoriId} onChange={(value) => setKategoriId(value)} options={[{ id: "", nama_kategori: "Semua kategori" }, ...kategoris]} placeholder="Semua kategori" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.nama_kategori} getOptionDescription={(x) => x.keterangan || ""} />
                         <SmartSelect value={petugasId} onChange={(value) => setPetugasId(value)} options={[{ id: "", name: "Semua petugas" }, ...users]} placeholder="Semua petugas" getOptionValue={(x) => x.id} getOptionLabel={(x) => x.name} getOptionDescription={(x) => [x.role?.nama_role, x.role_category?.name || x.roleCategory?.name, x.email].filter(Boolean).join(' · ')} />

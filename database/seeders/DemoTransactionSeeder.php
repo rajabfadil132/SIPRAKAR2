@@ -2,7 +2,17 @@
 
 namespace Database\Seeders;
 
-use App\Models\{AppNotification, Cabang, KategoriPekerjaan, Pekerjaan, PekerjaanChecklist, ProgressPekerjaan, ProgramKerja, ProgramKerjaEstimasiItem, Rab, RabDetail, User};
+use App\Models\AppNotification;
+use App\Models\Cabang;
+use App\Models\KategoriPekerjaan;
+use App\Models\Pekerjaan;
+use App\Models\PekerjaanChecklist;
+use App\Models\ProgressPekerjaan;
+use App\Models\ProgramKerja;
+use App\Models\ProgramKerjaEstimasiItem;
+use App\Models\Rab;
+use App\Models\RabDetail;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DemoTransactionSeeder extends Seeder

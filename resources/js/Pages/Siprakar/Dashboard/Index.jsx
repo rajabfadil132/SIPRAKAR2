@@ -30,7 +30,6 @@ export default function Dashboard({
     summary = {},
     statusCounts = [],
     barCounts = [],
-    barTitle = "Pekerjaan per Kategori",
     trend = [],
     recentPekerjaan = [],
     runningItems = [],
@@ -78,10 +77,10 @@ export default function Dashboard({
                 </div>
             </section>
 
-            <section className="mt-6 grid min-w-0 gap-6 xl:grid-cols-3">
-                <DashboardDonutChart title="Status Pekerjaan" data={statusCounts} centerLabel="pekerjaan" />
-                <DashboardBarChart title={barTitle} data={barCounts} />
-                <DashboardLineChart title="Tren 6 Bulan: Program & Selesai" data={trend} series={[{ key: "total_program", label: "Total Program", color: "#6870fa" }, { key: "done", label: "Selesai", color: "#4cceac" }]} />
+            <section className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <DashboardDonutChart title="Pekerjaan Selesai per Cabang" data={statusCounts} centerLabel="pekerjaan" />
+                <DashboardBarChart title="Program Kerja per Cabang" data={barCounts} />
+                <div className="sm:col-span-2 xl:col-span-1"><DashboardLineChart title="Tren 6 Bulan: Program & Selesai" data={trend} series={[{ key: "total_program", label: "Total Program", color: "#6870fa" }, { key: "done", label: "Selesai", color: "#4cceac" }]} /></div>
             </section>
 
             <section className="mt-6 grid gap-6 xl:grid-cols-2">
