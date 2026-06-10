@@ -6,9 +6,23 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/', fn () => redirect()->route('dashboard'))->name('home');
-    Route::get('/siprakar', fn () => redirect()->route('dashboard'))->name('siprakar.home');
-    Route::get('/pengaturan-sistem', fn () => redirect()->route('master-data.index'))->name('system.home');
+    Route::get('/', fn () => redirect()->route(request()->user()->accessibleRouteName()))->name('home');
+    Route::get('/siprakar', fn () => redirect()->route(request()->user()->accessibleRouteName()))->name('siprakar.home');
+    Route::get('/pengaturan-sistem', function () {
+        $user = request()->user();
+
+        foreach ([
+            'master_data.view' => 'master-data.index',
+            'users.view' => 'users-management.index',
+            'reports.view' => 'activity-logs.index',
+        ] as $permission => $route) {
+            if ($user->hasPermission($permission)) {
+                return redirect()->route($route);
+            }
+        }
+
+        return redirect()->route($user->accessibleRouteName());
+    })->name('system.home');
     Route::get('/dashboard', DashboardController::class)->middleware('permission:dashboard.view')->name('dashboard');
 });
 

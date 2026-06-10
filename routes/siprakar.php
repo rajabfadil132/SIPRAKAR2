@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Siprakar\ArsipController;
 use App\Http\Controllers\Siprakar\PekerjaanController;
 use App\Http\Controllers\Siprakar\ProgramKerja\ConvertToPekerjaanController;
 use App\Http\Controllers\Siprakar\ProgramKerjaController;
@@ -23,9 +24,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('program-kerja/{programKerja}/to-pekerjaan', [ConvertToPekerjaanController::class, '__invoke'])->middleware('permission:pekerjaan.create')->name('program-kerja.to-pekerjaan');
 
     Route::get('pekerjaan', [PekerjaanController::class, 'index'])->middleware('permission:pekerjaan.view')->name('pekerjaan.index');
-    Route::get('pekerjaan/archive', [PekerjaanController::class, 'archive'])->middleware('permission:pekerjaan.view')->name('pekerjaan.archive');
-    Route::post('pekerjaan/archive/{id}/restore', [PekerjaanController::class, 'restore'])->middleware('permission:pekerjaan.edit')->name('pekerjaan.restore');
-    Route::delete('pekerjaan/archive/{id}/force', [PekerjaanController::class, 'forceDestroy'])->middleware('permission:pekerjaan.delete')->name('pekerjaan.force-destroy');
     Route::get('pekerjaan/create', [PekerjaanController::class, 'create'])->middleware('permission:pekerjaan.create')->name('pekerjaan.create');
     Route::post('pekerjaan', [PekerjaanController::class, 'store'])->middleware('permission:pekerjaan.create')->name('pekerjaan.store');
     Route::get('pekerjaan/{pekerjaan}', [PekerjaanController::class, 'show'])->middleware('permission:pekerjaan.show')->name('pekerjaan.show');
@@ -35,6 +33,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('pekerjaan/{pekerjaan}', [PekerjaanController::class, 'destroy'])->middleware('permission:pekerjaan.delete')->name('pekerjaan.destroy');
     Route::post('pekerjaan/{pekerjaan}/progress', [PekerjaanController::class, 'storeProgress'])->middleware('permission:pekerjaan.progress')->name('pekerjaan.progress.store');
     Route::patch('pekerjaan/{pekerjaan}/checklist/{checklist}', [PekerjaanController::class, 'toggleChecklist'])->middleware('permission:pekerjaan.progress')->name('pekerjaan.checklist.toggle');
+
+    Route::get('arsip', [ArsipController::class, 'index'])->middleware('permission:program_kerja.view')->name('arsip.index');
+    Route::get('arsip/program-kerja', [ArsipController::class, 'programKerja'])->middleware('permission:program_kerja.view')->name('arsip.program-kerja');
+    Route::get('arsip/pekerjaan', [ArsipController::class, 'pekerjaan'])->middleware('permission:pekerjaan.view')->name('arsip.pekerjaan');
+    Route::get('arsip/rab', [ArsipController::class, 'rab'])->middleware('permission:rab.view')->name('arsip.rab');
+    Route::post('arsip/program-kerja/{id}/restore', [ArsipController::class, 'restoreProgramKerja'])->middleware('permission:program_kerja.edit')->name('arsip.program-kerja.restore');
+    Route::delete('arsip/program-kerja/{id}/force', [ArsipController::class, 'forceDestroyProgramKerja'])->middleware('permission:program_kerja.delete')->name('arsip.program-kerja.force-destroy');
+    Route::post('arsip/pekerjaan/{id}/restore', [ArsipController::class, 'restorePekerjaan'])->middleware('permission:pekerjaan.edit')->name('arsip.pekerjaan.restore');
+    Route::delete('arsip/pekerjaan/{id}/force', [ArsipController::class, 'forceDestroyPekerjaan'])->middleware('permission:pekerjaan.delete')->name('arsip.pekerjaan.force-destroy');
+    Route::post('arsip/rab/{id}/restore', [ArsipController::class, 'restoreRab'])->middleware('permission:rab.edit')->name('arsip.rab.restore');
+    Route::delete('arsip/rab/{id}/force', [ArsipController::class, 'forceDestroyRab'])->middleware('permission:rab.delete')->name('arsip.rab.force-destroy');
 
     Route::get('rab', [RabController::class, 'index'])->middleware('permission:rab.view')->name('rab.index');
     Route::get('rab/create', [RabController::class, 'create'])->middleware('permission:rab.create')->name('rab.create');

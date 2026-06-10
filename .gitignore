@@ -84,3 +84,10 @@ Thumbs.db
 Homestead.json
 Homestead.yaml
 deploy.rake
+
+# ==============================================
+# Documentation & misc
+# ==============================================
+/docs
+*.md
+!README.md

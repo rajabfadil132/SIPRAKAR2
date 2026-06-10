@@ -117,7 +117,17 @@ class User extends Authenticatable
             return true;
         }
 
-        return (bool) data_get($this->role?->permission?->permissions ?? [], $permission, false);
+        $permissions = $this->role?->permission?->permissions ?? [];
+
+        // Permission key menggunakan format bertitik, contoh: "dashboard.view".
+        // Jangan langsung memakai data_get($permissions, $permission) karena titik
+        // akan dianggap sebagai path nested, sehingga key literal "dashboard.view"
+        // tidak terbaca dan semua role non-superadmin selalu dianggap tidak punya akses.
+        if (array_key_exists($permission, $permissions)) {
+            return (bool) $permissions[$permission];
+        }
+
+        return (bool) data_get($permissions, $permission, false);
     }
 
     public function permissionMap(): array

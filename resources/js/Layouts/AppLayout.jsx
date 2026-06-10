@@ -46,7 +46,7 @@ const siprakarMenus = [
         children: [
             { label: "RAB Pekerjaan", href: "/rab", icon: FileSpreadsheet },
             { label: "Laporan & Statistik", href: "/reports", icon: FileText },
-            { label: "Arsip Pekerjaan", href: "/pekerjaan/archive", icon: Database },
+            { label: "Arsip", href: "/arsip", icon: Database },
         ],
     },
 ];
@@ -112,9 +112,38 @@ function removeEmptySections(items, permissions = {}, isAdmin = false, isSuperad
     });
 }
 
-function canSee(item) {
+const menuPermissionMap = {
+    "/dashboard": ["dashboard.view"],
+    "/program-kerja": ["program_kerja.view"],
+    "/pekerjaan": ["pekerjaan.view"],
+    "/tugas-saya": ["pekerjaan.progress"],
+    "/rab": ["rab.view"],
+    "/reports": ["reports.view"],
+    "/arsip": ["program_kerja.view", "pekerjaan.view", "rab.view"],
+    "/master-data": ["master_data.view"],
+    "/users-management": ["users.view"],
+    "/role-permissions": ["users.view"],
+    "/activity-logs": ["reports.view"],
+    "/siprakar": ["dashboard.view", "program_kerja.view", "pekerjaan.view", "pekerjaan.progress", "rab.view", "reports.view"],
+    "/pengaturan-sistem": ["master_data.view", "users.view", "reports.view"],
+};
+
+function hasAnyPermission(permissions = {}, keys = []) {
+    return keys.some((key) => Boolean(permissions?.[key]));
+}
+
+function canSee(item, permissions = {}, isAdmin = false, isSuperadmin = false) {
     if (item.section) return true;
-    return true;
+    if (isSuperadmin) return true;
+
+    if (item.children?.length) {
+        return item.children.some((child) => canSee(child, permissions, isAdmin, isSuperadmin));
+    }
+
+    const requiredPermissions = menuPermissionMap[item.href] ?? [];
+    if (requiredPermissions.length === 0) return true;
+
+    return hasAnyPermission(permissions, requiredPermissions);
 }
 
 function isActive(current, item) {
@@ -124,7 +153,7 @@ function isActive(current, item) {
 
 const moduleBreadcrumbs = [
     { prefix: "/program-kerja", parent: "SIPRAKAR", label: "Program Kerja", create: "Tambah Program Kerja", edit: "Edit Program Kerja", detail: "Detail Program Kerja" },
-    { prefix: "/pekerjaan/archive", parent: "SIPRAKAR", label: "Arsip Pekerjaan" },
+    { prefix: "/arsip", parent: "SIPRAKAR", label: "Arsip" },
     { prefix: "/tugas-saya", parent: "SIPRAKAR", label: "Tugas Saya" },
     { prefix: "/pekerjaan", parent: "SIPRAKAR", label: "Data Pekerjaan", create: "Tambah Pekerjaan", edit: "Edit Pekerjaan", detail: "Detail Pekerjaan" },
     { prefix: "/rab", parent: "SIPRAKAR", label: "RAB Program Kerja", create: "Tambah RAB", edit: "Edit RAB", detail: "Detail RAB" },
