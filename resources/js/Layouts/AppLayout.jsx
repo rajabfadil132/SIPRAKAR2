@@ -119,12 +119,12 @@ const menuPermissionMap = {
     "/tugas-saya": ["pekerjaan.progress"],
     "/rab": ["rab.view"],
     "/reports": ["reports.view"],
-    "/arsip": ["program_kerja.view", "pekerjaan.view", "rab.view"],
+    "/arsip": ["arsip.view"],
     "/master-data": ["master_data.view"],
     "/users-management": ["users.view"],
     "/role-permissions": ["users.view"],
     "/activity-logs": ["reports.view"],
-    "/siprakar": ["dashboard.view", "program_kerja.view", "pekerjaan.view", "pekerjaan.progress", "rab.view", "reports.view"],
+    "/siprakar": ["dashboard.view", "program_kerja.view", "pekerjaan.view", "pekerjaan.progress", "rab.view", "reports.view", "arsip.view"],
     "/pengaturan-sistem": ["master_data.view", "users.view", "reports.view"],
 };
 

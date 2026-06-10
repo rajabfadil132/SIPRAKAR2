@@ -44,6 +44,12 @@ return [
                 'reports.view' => 'Lihat laporan dan audit',
             ],
         ],
+        'arsip' => [
+            'label' => 'Arsip',
+            'permissions' => [
+                'arsip.view' => 'Akses menu & data arsip',
+            ],
+        ],
         'master_data' => [
             'label' => 'Master Data',
             'permissions' => [
@@ -76,6 +82,7 @@ return [
         'pekerjaan.view','pekerjaan.show','pekerjaan.create','pekerjaan.edit','pekerjaan.delete','pekerjaan.progress',
         'rab.view','rab.create','rab.edit','rab.delete',
         'reports.view',
+        'arsip.view',
         'master_data.view','master_data.create','master_data.edit','master_data.delete',
         'users.view','users.show','users.create','users.edit','users.delete',
         'notifications.view',

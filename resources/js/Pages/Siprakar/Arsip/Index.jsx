@@ -47,7 +47,7 @@ function ProgramKerjaRow({ item, permissions, isSuperadmin }) {
             <td className="text-right">
                 <div className="table-actions">
                     <span className="text-xs text-slate-500">{item.deleter?.name ?? "-"}</span>
-                    {permissions["program_kerja.edit"] && (
+                    {permissions["arsip.view"] && (
                         <button
                             type="button"
                             className="icon-btn"
@@ -57,11 +57,11 @@ function ProgramKerjaRow({ item, permissions, isSuperadmin }) {
                             <RotateCcw size={15} />
                         </button>
                     )}
-                    {isSuperadmin && permissions["program_kerja.delete"] && (
+                    {permissions["arsip.view"] && isSuperadmin && (
                         <button
                             type="button"
                             className="icon-btn-danger"
-                            onClick={() => confirm("Hapus permanen program kerja ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/program-kerja/${item.id}/force`, { preserveScroll: true })}
+                            onClick={() => confirm("Hapus permanen program kerja ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/program-kerja/${item.id}/force`, {}, { preserveScroll: true })}
                             title="Hapus permanen"
                         >
                             <Trash2 size={15} />
@@ -90,7 +90,7 @@ function PekerjaanRow({ item, permissions, isSuperadmin }) {
             <td className="text-right">
                 <div className="table-actions">
                     <span className="text-xs text-slate-500">{item.deleter?.name ?? "-"}</span>
-                    {permissions["pekerjaan.edit"] && (
+                    {permissions["arsip.view"] && (
                         <button
                             type="button"
                             className="icon-btn"
@@ -100,11 +100,11 @@ function PekerjaanRow({ item, permissions, isSuperadmin }) {
                             <RotateCcw size={15} />
                         </button>
                     )}
-                    {isSuperadmin && permissions["pekerjaan.delete"] && (
+                    {permissions["arsip.view"] && isSuperadmin && (
                         <button
                             type="button"
                             className="icon-btn-danger"
-                            onClick={() => confirm("Hapus permanen pekerjaan ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/pekerjaan/${item.id}/force`, { preserveScroll: true })}
+                            onClick={() => confirm("Hapus permanen pekerjaan ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/pekerjaan/${item.id}/force`, {}, { preserveScroll: true })}
                             title="Hapus permanen"
                         >
                             <Trash2 size={15} />
@@ -136,7 +136,7 @@ function RabRow({ item, permissions, isSuperadmin }) {
             <td className="text-right">
                 <div className="table-actions">
                     <span className="text-xs text-slate-500">{item.deleter?.name ?? "-"}</span>
-                    {permissions["rab.edit"] && (
+                    {permissions["arsip.view"] && (
                         <button
                             type="button"
                             className="icon-btn"
@@ -146,11 +146,11 @@ function RabRow({ item, permissions, isSuperadmin }) {
                             <RotateCcw size={15} />
                         </button>
                     )}
-                    {isSuperadmin && permissions["rab.delete"] && (
+                    {permissions["arsip.view"] && isSuperadmin && (
                         <button
                             type="button"
                             className="icon-btn-danger"
-                            onClick={() => confirm("Hapus permanen RAB ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/rab/${item.id}/force`, { preserveScroll: true })}
+                            onClick={() => confirm("Hapus permanen RAB ini? Data tidak bisa dikembalikan.") && router.delete(`/arsip/rab/${item.id}/force`, {}, { preserveScroll: true })}
                             title="Hapus permanen"
                         >
                             <Trash2 size={15} />
