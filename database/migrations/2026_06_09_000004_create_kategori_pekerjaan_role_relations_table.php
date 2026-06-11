@@ -59,7 +59,7 @@ return new class extends Migration
                 $table->foreignId('kategori_pekerjaan_id')->constrained('kategori_pekerjaans')->cascadeOnDelete();
                 $table->foreignId('role_category_id')->constrained('role_categories')->cascadeOnDelete();
                 $table->timestamps();
-                $table->unique(['kategori_pekerjaan_id', 'role_category_id']);
+                $table->unique(['kategori_pekerjaan_id', 'role_category_id'], 'kategori_role_categories_unique');
             });
         }
 
